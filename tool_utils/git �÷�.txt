@@ -1,0 +1,2 @@
+1，提交代码 git push origin master
+2，强制删除(包括历史记录) git filter-branch --index-filter 'git rm -r --cached --ignore-unmatch path/to/your/file' HEAD
