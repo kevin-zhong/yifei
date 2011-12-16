@@ -1,0 +1,8 @@
+包括：master 选举；节点变化，映射规则变化等等；
+
+一单独进程处理：
+	接受svr注册，管理节点存活，管理租约；//master
+	转发注册//not master
+	和其他子进程通信 //采用unix domain, path=prefix/sock/parent_pid.sock(如果sock不幸close，则需要重连)
+			//此进程必须接受父进程所有工作子进程的连接，并通知变化，更新等等；在等待更新conf的过程中，如果
+			//等待子进程完成某任务太久，则直接kill掉；
