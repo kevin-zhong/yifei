@@ -1,0 +1,168 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ(2.59)
+AC_INIT([Yifei])
+AM_INIT_AUTOMAKE(Yifei, 0.1)
+AC_CONFIG_SRCDIR([src/net/yf_send_recv.c])
+AC_CONFIG_HEADER([src/yf_config.h])
+
+# Check system type
+system_type=`uname -s 2>/dev/null`
+case $system_type in
+	FreeBSD)
+		AC_DEFINE([YF_FREEBSD], [], ["FreeBSD"])
+	;;
+        Linux)
+                AC_DEFINE([YF_LINUX], [], ["Linux"])
+        ;;
+        Darwin)
+                AC_DEFINE([YF_DARWIN], [], ["Darwin"])
+        ;;
+        SunOS)
+                AC_DEFINE([YF_SOLARIS], [], ["SunOS"])
+        ;;
+        *)
+		AC_MSG_WARN("..sys..")
+        ;;	
+esac
+
+# Check words end
+AC_C_BIGENDIAN
+
+# Checks for programs.
+AC_PROG_CC
+AC_PROG_CXX
+
+# Checks for libraries.
+AC_PROG_RANLIB
+
+# for clock_gettime
+LDFLAGS=-lrt
+
+# Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netinet/in.h stddef.h stdint.h stdlib.h string.h strings.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h unistd.h])
+
+AC_CHECK_HEADERS([poll.h sys/epoll.h netinet/tcp.h sys/event.h libutil.h sys/filio.h sys/sockio.h net/if_dl.h sched.h sys/shm.h pthread.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_HEADER_STDBOOL
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_STRUCT_TM
+AC_C_VOLATILE
+
+AC_CHECK_SIZEOF(void *)
+AC_CHECK_SIZEOF(long)
+
+# Checks for library functions.
+AC_FUNC_FORK
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_MMAP
+AC_FUNC_SELECT_ARGTYPES
+AC_FUNC_STAT
+AC_CHECK_FUNCS([clock_gettime dup2 ftruncate gettimeofday localtime_r munmap select strerror])
+
+AC_CHECK_FUNCS([posix_memalign memalign pread pwrite gethostbyname2 strcasecmp strncasecmp bzero])
+
+
+# debug option
+AC_ARG_ENABLE([debug],
+	[AS_HELP_STRING([--enable-debug], [debug program with log(default is no)])],
+	[CFLAGS="-DYF_DEBUG -g -O0"],
+	[CFLAGS="-O2"])
+
+CPPFLAGS=$CFLAGS
+CXXFLAGS=
+
+# test option
+TEST_DIR=""
+AC_ARG_ENABLE([unit_test],
+	[AS_HELP_STRING([--enable-unit-test], [unit test program])],
+	[TEST_DIR="test"], [])
+AC_SUBST(TEST_DIR)
+
+# thread option
+AC_ARG_ENABLE([thread],
+	[AS_HELP_STRING([--disable-thread], [disable thread])],
+	[], [AC_DEFINE([YF_THREADS], [1], ["enable thread"])])
+
+# check for atomic support
+AC_CHECK_HEADERS([asm/atomic.h linux/atomic.h asm/atomic_ops.h libkern/OSAtomic.h])
+
+AC_TRY_LINK([], [long i=0; __sync_fetch_and_add(&i, 1); __sync_bool_compare_and_swap(&i, 1, 0); __sync_fetch_and_sub(&i, 1);], 
+	[AC_DEFINE([HAVE_GCC_BUILTIN_ATOMIC], [], ["if have built-in atomic ops"])], 
+	[AC_MSG_WARN("no built-in atomic ops")])
+
+
+# check sockaddr.sa_len
+AC_TRY_LINK([#include <sys/types.h>
+	#include <sys/socket.h>
+	], [struct sockaddr *psockadd=NULL; psockadd->sa_len=0;],
+	[AC_DEFINE([HAVE_SOCKADDR_SA_LEN], [], ["if sockaddr have sa_len"])], 
+	[AC_MSG_RESULT("sockaddr have no sa_len")])
+
+# Check msghdr.msg_control
+AC_TRY_LINK([#include <sys/types.h>
+	#include <sys/socket.h>
+	], [struct msghdr msg; msg.msg_control = NULL; msg.msg_controllen = 0;],
+	[AC_DEFINE([HAVE_MSGHDR_MSG_CONTROL], [], ["if msghdr have msg_control"])], 
+	[AC_MSG_RESULT("msghdr have no msg_control")])
+
+# check share mem
+AC_CACHE_CHECK([for share mem], ac_shm_detect, [
+	AC_TRY_RUN([#include <sys/mman.h>
+	int main(){return mmap(0, 4096,PROT_READ|PROT_WRITE, MAP_ANON|MAP_SHARED, -1, 0)==MAP_FAILED;}
+	], [ac_shm_detect=1], [ac_shm_detect=0])
+
+	if test $ac_shm_detect = 0;then
+		AC_TRY_RUN([#include <sys/mman.h>
+        	int main(){int fd=open("/dev/zero",O_RDWR); return mmap(0,4096,PROT_READ|PROT_WRITE,MAP_SHARED, fd,0)==MAP_FAILED;}
+        	], [ac_shm_detect=2], [ac_shm_detect=0])
+	fi
+])
+
+if test $ac_shm_detect = 1;then
+	AC_DEFINE([HAVE_MAP_ANON], [], ["if have anon mmap"])
+elif test $ac_shm_detect = 2;then
+	AC_DEFINE([HAVE_MAP_DEVZERO], [], ["if have zeor dev mmap"])
+else
+	AC_MSG_WARN("mmap try all failed")
+fi
+
+
+# check VARIADIC_MACROS
+AC_CACHE_CHECK([for variadic macros], ac_var_macro_id, [
+	AC_TRY_LINK([#include <stdio.h>
+	], [#define log(...) printf(__VA_ARGS__) 
+	    log("%d", 1);], 
+	[ac_var_macro_id=1], [ac_var_macro_id=0])
+
+	if test $ac_var_macro_id = 0;then
+		AC_TRY_LINK([#include <stdio.h>
+        	], [#define log(args...) printf(args)
+            	   log("%d", 1);],
+        	[ac_var_macro_id=2], [ac_var_macro_id=0])
+	fi
+])
+
+if test $ac_var_macro_id = 1;then
+        AC_DEFINE([HAVE_C99_VARIADIC_MACROS], [], ["if have c99 var macro"])
+elif test $ac_shm_detect = 2;then
+        AC_DEFINE([HAVE_GCC_VARIADIC_MACROS], [], ["if have gcc var macro"])
+else
+        AC_MSG_WARN("no var macro implements")
+fi
+
+AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
+
+AC_OUTPUT
+

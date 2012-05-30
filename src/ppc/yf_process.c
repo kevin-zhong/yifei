@@ -1,0 +1,411 @@
+#include <ppc/yf_header.h>
+#include <base_struct/yf_core.h>
+
+static void yf_execute_proc(void *data, yf_log_t *log);
+static void yf_pass_open_channel(yf_log_t *log);
+static void yf_close_parent_channels(yf_log_t *log);
+
+yf_int_t yf_process_slot;
+yf_socket_t yf_channel;
+yf_int_t yf_last_process;
+yf_process_t yf_processes[YF_MAX_PROCESSES];
+
+yf_int_t
+yf_init_processs(yf_log_t *log)
+{
+        size_t i = 0;
+
+        yf_process_slot = 0;
+        yf_channel = 0;
+        yf_last_process = 0;
+
+        yf_memzero(yf_processes, sizeof(yf_processes));
+
+        for (i = 0; i < YF_ARRAY_SIZE(yf_processes); ++i)
+        {
+                yf_processes[i].channel[0] = -1;
+                yf_processes[i].channel[1] = -1;
+                yf_processes[i].pid = -1;
+        }
+        return 0;
+}
+
+
+yf_pid_t
+yf_spawn_process(yf_spawn_proc_pt proc
+                 , void *data, char *name, yf_int_t respawn
+                 , yf_log_t *log)
+{
+        unsigned long on;
+        yf_pid_t pid;
+        yf_int_t s;
+
+        if (respawn >= 0)
+        {
+                s = respawn;
+        }
+        else {
+                for (s = 0; s < yf_last_process; s++)
+                {
+                        if (yf_processes[s].pid == -1)
+                        {
+                                break;
+                        }
+                }
+
+                if (s == YF_MAX_PROCESSES)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, 0,
+                                     "no more than %d processes can be spawned",
+                                     YF_MAX_PROCESSES);
+                        return YF_INVALID_PID;
+                }
+        }
+
+
+        if (respawn != YF_PROCESS_DETACHED)
+        {
+                if (socketpair(AF_LOCAL, SOCK_STREAM, 0, yf_processes[s].channel) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     "socketpair() failed while spawning \"%s\"", name);
+                        return YF_INVALID_PID;
+                }
+
+                yf_log_debug2(YF_LOG_DEBUG, log, 0,
+                              "channel %d:%d",
+                              yf_processes[s].channel[0],
+                              yf_processes[s].channel[1]);
+
+                if (yf_nonblocking(yf_processes[s].channel[0]) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     yf_nonblocking_n " failed while spawning \"%s\"",
+                                     name);
+                        yf_close_channel(yf_processes[s].channel, log);
+                        return YF_INVALID_PID;
+                }
+
+                if (yf_nonblocking(yf_processes[s].channel[1]) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     yf_nonblocking_n " failed while spawning \"%s\"",
+                                     name);
+                        yf_close_channel(yf_processes[s].channel, log);
+                        return YF_INVALID_PID;
+                }
+
+                on = 1;
+                if (ioctl(yf_processes[s].channel[0], FIOASYNC, &on) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     "ioctl(FIOASYNC) failed while spawning \"%s\"", name);
+                        yf_close_channel(yf_processes[s].channel, log);
+                        return YF_INVALID_PID;
+                }
+
+                if (fcntl(yf_processes[s].channel[0], F_SETOWN, yf_pid) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     "fcntl(F_SETOWN) failed while spawning \"%s\"", name);
+                        yf_close_channel(yf_processes[s].channel, log);
+                        return YF_INVALID_PID;
+                }
+
+                if (fcntl(yf_processes[s].channel[0], F_SETFD, FD_CLOEXEC) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
+                                     name);
+                        yf_close_channel(yf_processes[s].channel, log);
+                        return YF_INVALID_PID;
+                }
+
+                if (fcntl(yf_processes[s].channel[1], F_SETFD, FD_CLOEXEC) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
+                                     name);
+                        yf_close_channel(yf_processes[s].channel, log);
+                        return YF_INVALID_PID;
+                }
+
+                yf_channel = yf_processes[s].channel[1];
+        }
+        else {
+                yf_processes[s].channel[0] = -1;
+                yf_processes[s].channel[1] = -1;
+        }
+
+        yf_process_slot = s;
+
+
+        pid = fork();
+
+        switch (pid)
+        {
+        case -1:
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "fork() failed while spawning \"%s\"", name);
+                yf_close_channel(yf_processes[s].channel, log);
+                return YF_INVALID_PID;
+
+        case 0:
+                yf_pid = yf_getpid();
+                yf_close_parent_channels(log);
+                proc(data, log);
+                break;
+
+        default:
+                break;
+        }
+
+        yf_log_error(YF_LOG_NOTICE, log, 0, "start %s %P", name, pid);
+
+        yf_processes[s].pid = pid;
+        yf_processes[s].exited = 0;
+
+        if (respawn >= 0)
+        {
+                yf_pass_open_channel(log);
+                return pid;
+        }
+
+        yf_processes[s].proc = proc;
+        yf_processes[s].data = data;
+        yf_processes[s].name = name;
+        yf_processes[s].exiting = 0;
+
+        switch (respawn)
+        {
+        case YF_PROCESS_NORESPAWN:
+                yf_processes[s].respawn = 0;
+                yf_processes[s].just_spawn = 0;
+                yf_processes[s].detached = 0;
+                break;
+
+        case YF_PROCESS_JUST_SPAWN:
+                yf_processes[s].respawn = 0;
+                yf_processes[s].just_spawn = 1;
+                yf_processes[s].detached = 0;
+                break;
+
+        case YF_PROCESS_RESPAWN:
+                yf_processes[s].respawn = 1;
+                yf_processes[s].just_spawn = 0;
+                yf_processes[s].detached = 0;
+                break;
+
+        case YF_PROCESS_JUST_RESPAWN:
+                yf_processes[s].respawn = 1;
+                yf_processes[s].just_spawn = 1;
+                yf_processes[s].detached = 0;
+                break;
+
+        case YF_PROCESS_DETACHED:
+                yf_processes[s].respawn = 0;
+                yf_processes[s].just_spawn = 0;
+                yf_processes[s].detached = 1;
+                break;
+        }
+
+        if (s == yf_last_process)
+        {
+                yf_last_process++;
+        }
+
+        yf_pass_open_channel(log);
+
+        return pid;
+}
+
+
+yf_pid_t
+yf_execute(yf_exec_ctx_t *ctx, yf_log_t *log)
+{
+        return yf_spawn_process(yf_execute_proc, ctx, ctx->name,
+                                YF_PROCESS_DETACHED, log);
+}
+
+
+static void
+yf_execute_proc(void *data, yf_log_t *log)
+{
+        yf_exec_ctx_t *ctx = data;
+
+        if (execve(ctx->path, ctx->argv, ctx->envp) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "execve() failed while executing %s \"%s\"",
+                             ctx->name, ctx->path);
+        }
+
+        exit(1);
+}
+
+yf_int_t yf_daemon(yf_log_t *log)
+{
+        int fd;
+
+        switch (fork())
+        {
+        case -1:
+                yf_log_error(YF_LOG_EMERG, log, yf_errno, "fork() failed");
+                return YF_ERROR;
+
+        case 0:
+                break;
+
+        default:
+                exit(0);
+        }
+
+        yf_pid = yf_getpid();
+
+        if (setsid() == -1)
+        {
+                yf_log_error(YF_LOG_EMERG, log, yf_errno, "setsid() failed");
+                return YF_ERROR;
+        }
+
+        umask(0);
+
+        fd = open("/dev/null", O_RDWR);
+        if (fd == -1)
+        {
+                yf_log_error(YF_LOG_EMERG, log, yf_errno,
+                             "open(\"/dev/null\") failed");
+                return YF_ERROR;
+        }
+
+        if (dup2(fd, STDIN_FILENO) == -1)
+        {
+                yf_log_error(YF_LOG_EMERG, log, yf_errno, "dup2(STDIN) failed");
+                return YF_ERROR;
+        }
+
+        if (dup2(fd, STDOUT_FILENO) == -1)
+        {
+                yf_log_error(YF_LOG_EMERG, log, yf_errno, "dup2(STDOUT) failed");
+                return YF_ERROR;
+        }
+
+        if (fd > STDERR_FILENO)
+        {
+                if (close(fd) == -1)
+                {
+                        yf_log_error(YF_LOG_EMERG, log, yf_errno, "close() failed");
+                        return YF_ERROR;
+                }
+        }
+
+        return YF_OK;
+}
+
+
+static void
+yf_close_parent_channels(yf_log_t *log)
+{
+        yf_int_t n;
+
+        for (n = 0; n < yf_last_process; n++)
+        {
+                if (yf_processes[n].pid == -1)
+                {
+                        continue;
+                }
+
+                if (n == yf_process_slot)
+                {
+                        continue;
+                }
+
+                if (yf_processes[n].channel[1] == -1)
+                {
+                        continue;
+                }
+
+                if (close(yf_processes[n].channel[1]) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     "close() channel failed");
+                }
+        }
+
+        /*if (close(yf_processes[yf_process_slot].channel[0]) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "close() channel failed");
+        }*/
+}
+
+
+static void
+yf_pass_open_channel(yf_log_t *log)
+{
+        yf_channel_t ch;
+
+        ch.command = YF_CMD_OPEN_CHANNEL;
+        yf_memzero(ch.data, sizeof(ch.data));
+        ch.slot = yf_process_slot;
+        ch.pid = yf_processes[yf_process_slot].pid;
+        ch.fd = yf_processes[yf_process_slot].channel[0];
+        yf_int_t i;
+
+        for (i = 0; i < yf_last_process; i++)
+        {
+                if (i == yf_process_slot
+                    || yf_processes[i].pid == -1
+                    || yf_processes[i].channel[0] == -1)
+                {
+                        continue;
+                }
+
+                yf_log_debug6(YF_LOG_DEBUG, log, 0,
+                              "pass channel s:%d pid:%P fd:%d to s:%i pid:%P fd:%d",
+                              ch.slot, ch.pid, ch.fd,
+                              i, yf_processes[i].pid,
+                              yf_processes[i].channel[0]);
+
+                yf_write_channel(yf_processes[i].channel[0],
+                                 &ch, log);
+        }
+}
+
+
+void yf_update_channel(yf_channel_t *channel, yf_log_t *log)
+{
+        switch (channel->command)
+        {
+        case YF_CMD_OPEN_CHANNEL:
+                yf_processes[channel->slot].pid = channel->pid;
+                yf_processes[channel->slot].channel[0] = channel->fd;
+                
+                if (channel->slot >= yf_last_process)
+                {
+                        yf_last_process = channel->slot + 1;
+                }
+
+                yf_log_debug4(YF_LOG_DEBUG, log, 0,
+                              "get channel s:%i pid:%P fd:%d process_size=%d",
+                              channel->slot, channel->pid, channel->fd, 
+                              yf_last_process);
+                break;
+
+        case YF_CMD_CLOSE_CHANNEL:
+
+                yf_log_debug4(YF_LOG_DEBUG, log, 0,
+                              "close channel s:%i pid:%P our:%P fd:%d",
+                              channel->slot, channel->pid, yf_processes[channel->slot].pid,
+                              yf_processes[channel->slot].channel[0]);
+
+                if (close(yf_processes[channel->slot].channel[0]) == -1)
+                {
+                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                     "close() channel failed");
+                }
+
+                yf_processes[channel->slot].channel[0] = -1;
+                break;
+        }
+}

@@ -1,0 +1,7 @@
+---- yf_evt_tn Æ¥Åä (6 ÔÚ 3 ÎÄ¼ş ) ----
+Yf_event.h (d:\linux\open source\yifei\src\mio_driver):#define yf_evt_tn(pev) yf_evt_type_n[(pev)->type]
+Yf_fd_event_in.c (d:\linux\open source\yifei\src\mio_driver):                                pevent->fd, yf_evt_tn(pevent));
+Yf_fd_event_in.c (d:\linux\open source\yifei\src\mio_driver):                                        pevent->fd, yf_evt_tn(pevent));    
+Yf_fd_event_in.c (d:\linux\open source\yifei\src\mio_driver):                                pevent->fd, &yf_evt_tn(pevent), 
+Yf_fd_event_in.c (d:\linux\open source\yifei\src\mio_driver):                                pevent->fd, yf_evt_tn(pevent));
+Yf_tm_event_in.c (d:\linux\open source\yifei\src\mio_driver):                                fd_evt->evt.fd, yf_evt_tn(&fd_evt->evt), 
