@@ -17,6 +17,8 @@ yf_create_listening(yf_net_t *net, yf_sock_addr_t *sockaddr, yf_sock_len_t sockl
         {
                 return NULL;
         }
+        
+        //zero .... must
 
         yf_memzero(ls, sizeof(yf_listening_t));
 
