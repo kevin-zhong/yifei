@@ -717,6 +717,8 @@ yf_connection_error(yf_connection_t *c, yf_err_t err, char *text)
         else {
                 level = YF_LOG_ALERT;
         }
+        
+        // good so beautifull ....
 
         yf_log_error(level, c->log, err, text);
 
