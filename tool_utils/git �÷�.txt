@@ -1,2 +1,10 @@
 1，提交代码 git push origin master
 2，强制删除(包括历史记录) git filter-branch --index-filter 'git rm -r --cached --ignore-unmatch path/to/your/file' HEAD
+
+汗，一个 git 用法搞了一个半小时，记下：
+1，上 github.com 新建一个 repository，名叫 xxxx
+2，在本地 git init 下
+3，git push （提示错误）
+4，git remote add ori3 git@github.com:kevin-zhong/xxxx.git
+5，git push ori3 master
+6，终于好了
