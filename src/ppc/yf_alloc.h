@@ -8,6 +8,8 @@ extern yf_uint_t yf_pagesize;
 extern yf_uint_t yf_cacheline_size;
 
 
+
+
 #ifdef  _MAX_ALIGNMENT
 #define  YF_ALIGNMENT  _MAX_ALIGNMENT
 #else
