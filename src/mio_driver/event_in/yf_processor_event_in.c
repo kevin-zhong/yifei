@@ -272,9 +272,13 @@ void yf_on_child_channle_rwable(yf_fd_event_t* evt)
                         rw_ctx.rw_cnt = 0;
                         if (yf_readv_chain(&rw_ctx, chain) < 0)
                                 goto fail_end;
+
+                        yf_log_debug1(YF_LOG_DEBUG, proc_evt->log, 0, 
+                                        "read %d from chnl", rw_ctx.rw_cnt);
                 }
 
-                yf_register_fd_evt(evt, NULL);
+                if (!evt->eof)
+                        yf_register_fd_evt(evt, NULL);
         }
         else if (evt->type == YF_WEVT)
         {
@@ -334,6 +338,11 @@ void yf_on_child_exit(yf_process_t* proc)
         proc_evt->processing = 0;
         proc_evt->error = yf_proc_exit_err(proc->status);
         proc_evt->exit_code = yf_proc_exit_code(proc->status);
+
+        yf_log_debug3(YF_LOG_DEBUG, proc_evt->log, 0, "%s execute error=%d, exit_code=%d", 
+                        proc_evt->exec_ctx.path, 
+                        proc_evt->error, 
+                        proc_evt->exit_code);
 
         yf_unregist_process_evt_in(proc_evt_inner);
         proc_evt->ret_handler(proc_evt);

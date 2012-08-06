@@ -29,14 +29,7 @@ struct  TestCtx
         bool   is_add;
 };
 
-void  erase_sigal_mask()
-{
-        sigset_t set;
-        sigemptyset(&set);
-        sigprocmask(SIG_BLOCK, &set, NULL);
-}
-
-void  signal_mask()
+void  signal_mask(yf_int_t unset = 0)
 {
         sigset_t set;
 
@@ -51,7 +44,12 @@ void  signal_mask()
         sigaddset(&set, yf_signal_value(YF_SHUTDOWN_SIGNAL));
         sigaddset(&set, yf_signal_value(YF_CHANGEBIN_SIGNAL));
 
-        sigprocmask(SIG_BLOCK, &set, NULL);        
+        sigprocmask(unset ? SIG_UNBLOCK : SIG_BLOCK, &set, NULL);
+}
+
+void  erase_sigal_mask()
+{
+        signal_mask(1);
 }
 
 void  child_process(void *data, yf_log_t *log)
@@ -133,6 +131,9 @@ void on_signal(yf_int_t signo)
 
 void  empty_child_proc(void *data, yf_log_t *log)
 {
+        //必须解除 继承得到的 signal mask，否则，将收不到信号
+        erase_sigal_mask();
+        
         yf_setproctitle("yf_proc_testor empty", log);
 
         yf_evt_driver_init_t driver_init = {0, 128, 16, 1, log, YF_DEFAULT_DRIVER_CB};
@@ -212,12 +213,24 @@ int exit_cnt = 0;
 
 void on_child_exit_cb(struct  yf_process_s* proc)
 {
+        printf("child=%d exit, chnnel=[%d-%d]\n", proc->pid, 
+                        proc->channel[0], 
+                        proc->channel[1]);
+        
+        proc->pid = -1;
+        yf_close_channel(proc->channel, &_log);
         ++exit_cnt;
 }
 
 
 TEST_F(ProcTestor, ShareMem)
 {
+        exit_cnt = 0;
+
+        yf_set_sig_handler(SIGCHLD, on_child_process_exit, &_log);
+        yf_set_sig_handler(SIGIO, SIG_IGN, &_log);
+        signal_mask();
+        
         yf_shm_t shm;
 
         shm.size = 4096;
@@ -266,11 +279,8 @@ TEST_F(ProcTestor, ShareMem)
                 ASSERT_TRUE(pid != YF_INVALID_PID);
         } 
 
-        yf_set_sig_handler(SIGCHLD, on_child_process_exit, &_log);
-        signal_mask();
         sigset_t set;
         sigemptyset(&set);
-        
         while (exit_cnt < YF_ARRAY_SIZE(cnt))
         {
                 sigsuspend(&set);
@@ -299,12 +309,14 @@ TEST_F(ProcTestor, ShareMem)
         ret = yf_write_channel(yf_processes[0].channel[0], &channel, &_log);
         ASSERT_EQ(ret, YF_OK);
 
+        //send file fd to child proc
         yf_memzero(&channel, sizeof(channel));
         channel.command = YF_CMD_SEND_FD;
-        channel.fd = yf_open_file("dir/test_fd_send", YF_FILE_APPEND, 
+        yf_fd_t fd_send = yf_open_file("dir/test_fd_send", YF_FILE_APPEND, 
                         YF_FILE_CREATE_OR_OPEN, 
                         YF_FILE_DEFAULT_ACCESS);
-        assert(channel.fd >= 0);
+        channel.fd = fd_send;
+        assert(fd_send >= 0);
         ret = yf_write_channel(yf_processes[1].channel[0], &channel, &_log);
         ASSERT_EQ(ret, YF_OK);
 
@@ -332,6 +344,7 @@ TEST_F(ProcTestor, ShareMem)
                 }
         }
 
+        yf_close_file(fd_send);
         yf_lock_destory(&shm_st->lock);
         yf_log_close(proc_log);
         yf_shm_free(&shm);
