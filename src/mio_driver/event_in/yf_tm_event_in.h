@@ -40,17 +40,6 @@ struct  yf_tm_evt_link_s
 #define  yf_is_fd_evt(timer) ((timer)->time_org_start.tv_msec & 1)
 
 
-typedef  union
-{
-        yf_u64_t  bit_64;
-        union {
-                yf_u32_t  bit_32;
-                yf_u16_t  bit_16[2];
-        } ubits[2];
-}
-yf_bit_set_t;
-
-
 #define  YF_TIMER_PRCS_MS_BIT   2
 #define  YF_FAR_TIMER_ROLL_SIZE_BIT 10
 
@@ -68,7 +57,7 @@ yf_bit_set_t;
 #define  _YF_FAR_TIMER_MS_DIST (_YF_FAR_TIMER_PRCS_MS<<YF_FAR_TIMER_ROLL_SIZE_BIT)
 
 
-typedef  struct
+struct  yf_tm_evt_driver_in_s
 {
         yf_u32_t            stm_evts_capcity;
 
@@ -96,18 +85,10 @@ typedef  struct
         yf_u64_t               tm_period_cnt;
         
         yf_u32_t               nearest_timeout_ms;
+
+        yf_int_t   (*poll)(struct  yf_tm_evt_driver_in_s* tm_evt_driver);
         
-}   ____cacheline_aligned 
-yf_tm_evt_driver_in_t;
-
-
-#ifdef  WORDS_BIGENDIAN
-#define  WORDS_LITTLE_PART  1
-#else
-#define  WORDS_LITTLE_PART  0
-#endif
-
-#define  YF_IS_LT_PART(p) (p == WORDS_LITTLE_PART)
+}   ____cacheline_aligned ;
 
 #define  YF_SET_FLAG(flags, i) yf_set_bit(flags[i >> 6].bit_64, yf_mod(i, 64))
 #define  YF_RSET_FLAG(flags, i) yf_reset_bit(flags[i >> 6].bit_64,  yf_mod(i, 64))
@@ -123,8 +104,6 @@ yf_int_t   yf_add_timer(yf_tm_evt_driver_in_t* tm_evt_driver
 
 yf_int_t   yf_del_timer(yf_tm_evt_driver_in_t* tm_evt_driver
                 , yf_timer_t* timer, yf_log_t *log);
-
-yf_int_t   yf_poll_timer(yf_tm_evt_driver_in_t* tm_evt_driver);
 
 void  yf_on_time_reset(yf_utime_t* new_time, yf_time_t* diff_tm, void* data);
 

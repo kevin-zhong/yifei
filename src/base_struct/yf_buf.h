@@ -79,6 +79,8 @@ yf_int_t yf_chain_add_copy(yf_pool_t *pool, yf_chain_t **chain, yf_chain_t *in);
 yf_chain_t *yf_chain_get_free_buf(yf_pool_t *p, yf_chain_t **free);
 void yf_chain_update_chains(yf_chain_t **free, yf_chain_t **busy, yf_chain_t **out);
 
+void yf_add_chain_to_tail(yf_chain_t **head, yf_chain_t *chain);
+
 
 yf_int_t yf_output_chain(yf_output_chain_ctx_t *ctx, yf_chain_t *in);
 yf_int_t yf_chain_writer(void *ctx, yf_chain_t *in);

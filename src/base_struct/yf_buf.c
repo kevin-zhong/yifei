@@ -169,18 +169,7 @@ yf_chain_update_chains(yf_chain_t **free
 {
         yf_chain_t *cl;
 
-        if (*busy == NULL)
-        {
-                *busy = *out;
-        }
-        else {
-                for (cl = *busy; cl->next; cl = cl->next)
-                {
-                }
-
-                cl->next = *out;
-        }
-
+        yf_add_chain_to_tail(busy, *out);
         *out = NULL;
 
         while (*busy)
@@ -199,3 +188,19 @@ yf_chain_update_chains(yf_chain_t **free
                 *free = cl;
         }
 }
+
+
+void yf_add_chain_to_tail(yf_chain_t **head, yf_chain_t *chain)
+{
+        yf_chain_t *cl;
+        
+        if (*head)
+                *head = chain;
+        else {
+                for (cl = *head; cl->next; cl = cl->next)
+                {
+                }
+                cl->next = chain;
+        }
+}
+

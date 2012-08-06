@@ -1,7 +1,7 @@
 #include <sys/select.h>
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
-#include "../yf_event_base_in.h"
+#include "../event_in/yf_event_base_in.h"
 
 #ifdef  HAVE_SYS_SELECT_H
 
@@ -236,6 +236,8 @@ static yf_int_t yf_select_dispatch(yf_fd_poll_t *poller)
                 }
                 else {
                         level = YF_LOG_ALERT;
+                        if (err == YF_EINVAL)
+                                yf_msleep(20);
                 }
 
                 yf_log_error(level, poller->log, err, "select() failed");

@@ -1,15 +1,18 @@
 lib_LIBRARIES=libyifei.a
 
-libyifei_a_SOURCES=./net/yf_send_recv.c \
-./net/yf_net_imp.c \
+libyifei_a_SOURCES=./net/yf_net_imp.c \
 ./net/yf_connection.c \
 ./mio_driver/yf_event.c \
-./mio_driver/yf_fd_event_in.c \
 ./mio_driver/fd_poller/yf_epoll.c \
 ./mio_driver/fd_poller/yf_select.c \
 ./mio_driver/fd_poller/yf_poll.c \
-./mio_driver/yf_tm_event_in.c \
-./mio_driver/yf_poll_in.c \
+./mio_driver/event_in/yf_fd_event_in.c \
+./mio_driver/event_in/yf_tm_event_in.c \
+./mio_driver/event_in/yf_poll_in.c \
+./mio_driver/event_in/yf_sig_event_in.c \
+./mio_driver/event_in/yf_processor_event_in.c \
+./mio_driver/yf_send_recv.c \
+./base_struct/yf_bit_op.c \
 ./base_struct/yf_rbtree.c \
 ./base_struct/yf_buf.c \
 ./base_struct/yf_hash.c \

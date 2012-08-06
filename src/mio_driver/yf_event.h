@@ -4,10 +4,14 @@
 #include <base_struct/yf_core.h>
 #include <ppc/yf_header.h>
 
+#define yf_evt_driver_t int
+
 typedef  struct  yf_tm_evt_s
 {
         void*        data;
         yf_log_t*   log;
+
+        yf_evt_driver_t*  driver;
 
         void (*timeout_handler)(struct yf_tm_evt_s* evt, yf_time_t* start);
 } 
@@ -19,8 +23,6 @@ yf_tm_evt_t;
 #define  YF_WEVT 0x02
 
 extern const yf_str_t yf_evt_type_n[];
-
-#define yf_evt_driver_t int
 
 
 typedef  struct yf_fd_event_s
@@ -55,6 +57,7 @@ typedef  struct
         yf_s32_t  poll_type;
         yf_u32_t nfds;
         yf_u32_t nstimers;
+        yf_int_t include_sig;
 
         yf_log_t*  log;
 
@@ -65,6 +68,8 @@ typedef  struct
         void *data;
 }
 yf_evt_driver_init_t;
+
+#define YF_DEFAULT_DRIVER_CB NULL, NULL, NULL, NULL, NULL
 
 
 yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init);
@@ -101,11 +106,57 @@ yf_int_t  yf_fd_evt_timer_ctl(yf_fd_event_t* pevent, int mode, yf_time_t* time_o
 
 yf_int_t  yf_alloc_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t** tm_evt
                 , yf_log_t* log);
-yf_int_t  yf_free_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t* tm_evt);
+yf_int_t  yf_free_tm_evt(yf_tm_evt_t* tm_evt);
 
-yf_int_t   yf_register_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t* tm_evt
-                , yf_time_t  *time_out);
-yf_int_t   yf_unregister_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t* tm_evt);
+yf_int_t   yf_register_tm_evt(yf_tm_evt_t* tm_evt, yf_time_t  *time_out);
+yf_int_t   yf_unregister_tm_evt(yf_tm_evt_t* tm_evt);
+
+/*
+* singal evt
+* in one processor, you can just register signo with one handler
+*/
+yf_int_t  yf_register_singal_evt(yf_evt_driver_t* driver
+                , yf_signal_t* signal, yf_log_t* log);
+
+//signals array with signo=0 end
+yf_int_t  yf_register_singal_evts(yf_evt_driver_t* driver
+                , yf_signal_t* signals, yf_log_t* log);
+
+yf_int_t  yf_unregister_singal_evt(yf_evt_driver_t* driver
+                , int  signo);
+
+/*
+* processor evt, just run once
+*/
+typedef struct yf_processor_event_s
+{
+        yf_exec_ctx_t exec_ctx;
+        
+        //if no need to read, pool can be set with NULL
+        yf_pool_t    *pool;
+        yf_chain_t  *write_chain;
+        yf_chain_t  *read_chain;
+
+        yf_s8_t   processing:1;
+        yf_s8_t   timeout:1;
+        yf_s8_t   error:1;
+        yf_s8_t   exit_code:1;
+
+        void*           data;
+        yf_log_t*     log;
+
+        yf_evt_driver_t* driver;
+        
+        void (*ret_handler)(struct yf_processor_event_s* evt);
+}
+yf_processor_event_t;
+
+yf_int_t  yf_alloc_proc_evt(yf_evt_driver_t* driver, yf_processor_event_t** proc_evt
+                , yf_log_t* log);
+yf_int_t  yf_free_proc_evt(yf_processor_event_t* proc_evt);
+
+yf_int_t   yf_register_proc_evt(yf_processor_event_t* proc_evt, yf_time_t  *time_out);
+yf_int_t   yf_unregister_proc_evt(yf_processor_event_t* proc_evt);
 
 #endif
 

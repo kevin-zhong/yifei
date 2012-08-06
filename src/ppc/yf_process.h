@@ -7,25 +7,40 @@ typedef pid_t yf_pid_t;
 
 #define YF_INVALID_PID  -1
 
-typedef void (*yf_spawn_proc_pt)(void *data, yf_log_t *log);
+#define YF_PROC_CHILD  -1
+#define YF_PROC_POPEN_R -2
+#define YF_PROC_POPEN_W -3
+#define YF_PROC_POPEN_RW -3
+#define YF_PROC_DETACH -5
 
-typedef struct
+#define yf_proc_writable(type) ((type==YF_PROC_POPEN_W) \
+                || (type==YF_PROC_POPEN_RW))
+#define yf_proc_readable(type) ((type==YF_PROC_POPEN_R) \
+                || (type==YF_PROC_POPEN_RW))                
+
+struct  yf_process_s;
+
+typedef void (*yf_spawn_proc_pt)(void *data, yf_log_t *log);
+typedef void (*yf_proc_exit_pt)(struct  yf_process_s* proc);
+
+typedef struct  yf_process_s
 {
         yf_pid_t         pid;
-        int                 work_type;
-        int                 status;
+        yf_int_t          status;
         yf_socket_t      channel[2];
 
         yf_spawn_proc_pt proc;
+        yf_proc_exit_pt  exit_cb;
+        void *          exit_data;
+        
         void *           data;
         char *           name;
 
-        unsigned         respawn : 1;
-        unsigned         just_spawn : 1;
-        unsigned         detached : 1;
-        unsigned         exiting : 1;
-        unsigned         exited : 1;
-} yf_process_t;
+        yf_int_t         type : 3;
+        yf_int_t         exiting : 1;
+        yf_int_t         exited : 1;
+} 
+yf_process_t;
 
 
 typedef struct
@@ -34,16 +49,18 @@ typedef struct
         char *       name;
         char *const *argv;
         char *const *envp;
-} yf_exec_ctx_t;
+
+        yf_proc_exit_pt  exit_cb;
+        yf_int_t       type;
+} 
+yf_exec_ctx_t;
 
 
 #define YF_MAX_PROCESSES         64
 
-#define YF_PROCESS_NORESPAWN     -1
-#define YF_PROCESS_JUST_SPAWN    -2
-#define YF_PROCESS_RESPAWN       -3
-#define YF_PROCESS_JUST_RESPAWN  -4
-#define YF_PROCESS_DETACHED      -5
+#if YF_MAX_PROCESSES >= 255
+#error "too may processors!!"
+#endif
 
 
 #define yf_getpid   getpid
@@ -51,11 +68,20 @@ typedef struct
 
 yf_int_t yf_init_processs(yf_log_t *log);
 
-yf_pid_t yf_spawn_process(yf_spawn_proc_pt proc, void *data, char *name, yf_int_t respawn, yf_log_t *log);
+yf_pid_t yf_spawn_process(yf_spawn_proc_pt proc
+                , void *data, char *name, yf_int_t respawn
+                , yf_proc_exit_pt  exit_cb
+                , yf_log_t *log);
+
 yf_pid_t yf_execute(yf_exec_ctx_t *ctx, yf_log_t *log);
 
 yf_int_t yf_daemon(yf_log_t *log);
 
+yf_int_t yf_pid_slot(yf_pid_t  pid);
+
+/*
+* used for child proc
+*/
 void yf_update_channel(yf_channel_t* channel, yf_log_t *log);
 
 

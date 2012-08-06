@@ -7,51 +7,6 @@ extern "C" {
 #include <mio_driver/yf_event.h>
 }
 
-sig_atomic_t g_reload_flag;
-sig_atomic_t g_noaccept_flag;
-sig_atomic_t g_terminate_flag;
-sig_atomic_t g_shutdown_flag;
-sig_atomic_t g_chagebin_flag;
-sig_atomic_t g_alarm_flag;
-sig_atomic_t g_child_flag;
-
-yf_signal_t signals[] = {
-        { yf_signal_value(YF_RECONFIGURE_SIGNAL),
-          "SIG" yf_value(YF_RECONFIGURE_SIGNAL),
-          "reload",
-          &g_reload_flag },
-
-        { yf_signal_value(YF_NOACCEPT_SIGNAL),
-          "SIG" yf_value(YF_NOACCEPT_SIGNAL),
-          "stop_accept",
-          &g_noaccept_flag },
-
-        { yf_signal_value(YF_TERMINATE_SIGNAL),
-          "SIG" yf_value(YF_TERMINATE_SIGNAL),
-          "stop",
-          &g_terminate_flag },
-
-        { yf_signal_value(YF_SHUTDOWN_SIGNAL),
-          "SIG" yf_value(YF_SHUTDOWN_SIGNAL),
-          "quit",
-          &g_shutdown_flag },
-
-        { yf_signal_value(YF_CHANGEBIN_SIGNAL),
-          "SIG" yf_value(YF_CHANGEBIN_SIGNAL),
-          "",
-          &g_chagebin_flag },
-
-        { SIGALRM,                               "SIGALRM",           "", &g_alarm_flag },
-
-        { SIGCHLD,                               "SIGCHLD",           "", &g_child_flag },
-
-        { SIGSYS,                                "SIGSYS, SIG_IGN",   "", NULL         },
-
-        { SIGPIPE,                               "SIGPIPE, SIG_IGN",  "", NULL         },
-
-        { 0,                                     NULL,                "", NULL         }
-};
-
 
 yf_pid_t yf_pid;
 yf_pool_t *_mem_pool;
@@ -132,34 +87,59 @@ void  child_process(void *data, yf_log_t *log)
         exit(0);
 }
 
+
+void on_signal(yf_int_t signo);
+
+yf_signal_t child_signals[] = {
+        { yf_signal_value(YF_RECONFIGURE_SIGNAL),
+          "SIG" yf_value(YF_RECONFIGURE_SIGNAL), "reload",
+          on_signal},
+        { yf_signal_value(YF_NOACCEPT_SIGNAL),
+          "SIG" yf_value(YF_NOACCEPT_SIGNAL),"stop_accept",
+          on_signal},
+        { yf_signal_value(YF_TERMINATE_SIGNAL),
+          "SIG" yf_value(YF_TERMINATE_SIGNAL), "stop",
+          on_signal},
+        { yf_signal_value(YF_SHUTDOWN_SIGNAL),
+          "SIG" yf_value(YF_SHUTDOWN_SIGNAL),"quit",
+          on_signal},
+        { yf_signal_value(YF_CHANGEBIN_SIGNAL),
+          "SIG" yf_value(YF_CHANGEBIN_SIGNAL),"",
+          on_signal},
+        { SIGALRM,   "SIGALRM",           "", on_signal},
+        { SIGSYS,      "SIGSYS, SIG_IGN",   "", NULL},
+        { SIGPIPE,     "SIGPIPE, SIG_IGN",  "", NULL},
+        { 0,              NULL,                "", NULL}
+};
+
+void on_signal(yf_int_t signo)
+{
+        printf("signo=%d\t", signo);
+        uint32_t i1 = 0;
+        for ( i1 = 0; i1 < YF_ARRAY_SIZE(child_signals); i1++ )
+        {
+                if (child_signals[i1].signo == signo)
+                {
+                        printf("singnal=(%s) happend", child_signals[i1].name);
+                        break;
+                }
+        }
+        printf("\n");
+        
+        if (signo == yf_signal_value(YF_SHUTDOWN_SIGNAL))
+                exit(0);
+}
+
+
 void  empty_child_proc(void *data, yf_log_t *log)
 {
-        erase_sigal_mask();
-        
         yf_setproctitle("yf_proc_testor empty", log);
-        
-        for (int cnt = 0; true; ++cnt)
-        {
-                usleep(300000);
-                yf_log_debug2(YF_LOG_DEBUG, log, 0, "sleep_%d _ %d", yf_process_slot, cnt);
-                
-                if (g_reload_flag)
-                {
-                        yf_log_debug0(YF_LOG_DEBUG, log, 0, "need reload");
-                        g_reload_flag = 0;
-                }
-                else if (g_noaccept_flag)
-                {
-                        yf_log_debug0(YF_LOG_DEBUG, log, 0, "need stop accept");
-                        g_noaccept_flag = 0;                        
-                }
-                else if (g_shutdown_flag)
-                {
-                        yf_log_debug0(YF_LOG_DEBUG, log, 0, "need shutdown");
-                        g_shutdown_flag = 0;
-                        exit(0);
-                }                
-        }
+
+        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, log, YF_DEFAULT_DRIVER_CB};
+        yf_evt_driver_t * driver = yf_evt_driver_create(&driver_init);
+
+        yf_register_singal_evts(driver, child_signals, log);
+        yf_evt_driver_start(driver);
 }
 
 
@@ -221,6 +201,21 @@ void  test_channel_func(void *data, yf_log_t *log)
 }
 
 
+sig_atomic_t g_child_flag = 0;
+
+void on_child_process_exit(yf_int_t signo)
+{
+        g_child_flag = 1;
+}
+
+int exit_cnt = 0;
+
+void on_child_exit_cb(struct  yf_process_s* proc)
+{
+        ++exit_cnt;
+}
+
+
 TEST_F(ProcTestor, ShareMem)
 {
         yf_shm_t shm;
@@ -247,13 +242,17 @@ TEST_F(ProcTestor, ShareMem)
         ASSERT_EQ(yf_log_open("dir/proc.log", proc_log), proc_log);
 
         yf_pid_t active_pid = yf_spawn_process(test_channel_func,
-                               NULL, "test_channel_func", YF_PROCESS_NORESPAWN, proc_log);
+                               NULL, "test_channel_func", YF_PROC_CHILD, 
+                               on_child_exit_cb, proc_log);
+        
         yf_pid_t pid = yf_spawn_process(test_channel_func,
-                               NULL, "test_channel_func", YF_PROCESS_NORESPAWN, proc_log);
+                               NULL, "test_channel_func", YF_PROC_CHILD, 
+                               on_child_exit_cb, proc_log);
 
         yf_pid_t signal_pid = yf_spawn_process(empty_child_proc,
-                               NULL, "empty_child_proc", YF_PROCESS_NORESPAWN, proc_log);
-        ASSERT_TRUE(signal_pid != YF_INVALID_PID);        
+                               NULL, "empty_child_proc", YF_PROC_CHILD, 
+                               on_child_exit_cb, proc_log);
+        ASSERT_TRUE(signal_pid != YF_INVALID_PID);
         
         for (size_t i = 0; i < YF_ARRAY_SIZE(cnt); ++i)
         {
@@ -261,15 +260,14 @@ TEST_F(ProcTestor, ShareMem)
                 test_ctx.is_add = flag[i];
 
                 pid = yf_spawn_process(child_process,
-                                       &test_ctx, "child_process", YF_PROCESS_NORESPAWN, proc_log);
+                                       &test_ctx, "child_process", YF_PROC_CHILD, 
+                                       on_child_exit_cb, proc_log);
 
                 ASSERT_TRUE(pid != YF_INVALID_PID);
         } 
 
-        int exit_cnt = 0;
-
+        yf_set_sig_handler(SIGCHLD, on_child_process_exit, &_log);
         signal_mask();
-
         sigset_t set;
         sigemptyset(&set);
         
@@ -278,9 +276,8 @@ TEST_F(ProcTestor, ShareMem)
                 sigsuspend(&set);
                 if (g_child_flag)
                 {
-                        yf_process_get_status();
+                        yf_process_get_status(&_log);
                         g_child_flag = 0;
-                        exit_cnt++;
                         yf_log_debug1(YF_LOG_DEBUG, &_log, 0, "exit child process = %d", exit_cnt);
                 }
         }
@@ -289,9 +286,10 @@ TEST_F(ProcTestor, ShareMem)
         ASSERT_EQ(shm_st->cnt, (cnt[0] + cnt[1] - cnt[2] - cnt[3]));
 
         //send signal to empty child proc
-        yf_os_signal_process("reload", signal_pid, &_log);
-        yf_os_signal_process("stop_accept", signal_pid, &_log);
-        yf_os_signal_process("quit", signal_pid, &_log);
+        yf_os_signal_process(child_signals, "reload", signal_pid, &_log);
+        yf_os_signal_process(child_signals, "stop_accept", signal_pid, &_log);
+        yf_sleep(1);//must
+        yf_os_signal_process(child_signals, "quit", signal_pid, &_log);
 
         //send cmd by channel to child proc, and old child -> new child
         yf_channel_t  channel = {0};
@@ -326,11 +324,10 @@ TEST_F(ProcTestor, ShareMem)
         while (exit_cnt < 3)
         {
                 sigsuspend(&set);
-                if (g_child_flag)//bug here, may lost, cause g_child_flag may set many times .. TODO
+                if (g_child_flag)
                 {
-                        yf_process_get_status();//should return exited num
+                        yf_process_get_status(&_log);
                         g_child_flag = 0;
-                        exit_cnt++;
                         yf_log_debug1(YF_LOG_DEBUG, &_log, 0, "exit child process = %d", exit_cnt);
                 }
         }
@@ -356,6 +353,8 @@ int main(int argc, char **argv)
         yf_log_open(NULL, &_log);
         _mem_pool = yf_create_pool(1024000, &_log);
 
+        yf_init_bit_indexs();
+
         yf_init_time(&_log);
         yf_update_time(NULL, NULL, &_log);
 
@@ -373,9 +372,6 @@ int main(int argc, char **argv)
 
         ret = yf_init_threads(36, 1024 * 1024, &_log);
         assert(ret == YF_OK);
-
-        //init singnals
-        ret = yf_init_signals(&_log);
 
         testing::InitGoogleTest(&argc, (char **)argv);
         ret = RUN_ALL_TESTS();

@@ -4,7 +4,7 @@
 AC_PREREQ(2.59)
 AC_INIT([Yifei])
 AM_INIT_AUTOMAKE(Yifei, 0.1)
-AC_CONFIG_SRCDIR([src/net/yf_send_recv.c])
+AC_CONFIG_SRCDIR([src/mio_driver/yf_send_recv.c])
 AC_CONFIG_HEADER([src/yf_config.h])
 
 # Check system type

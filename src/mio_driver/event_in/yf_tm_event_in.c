@@ -2,18 +2,6 @@
 #include <base_struct/yf_core.h>
 #include "yf_event_base_in.h"
 
-typedef  struct
-{
-        yf_s8_t  indexs[16];
-}
-yf_bit_index_t;
-
-#define  YF_END_INDEX  -1
-#define  yf_index_end(bit_indexs, i) (i == 16 || bit_indexs[i] == YF_END_INDEX)
-
-static  yf_bit_index_t  yf_bit_indexs[65536];
-
-static void yf_init_bit_indexs();
 static void yf_update_nearest_tm_ms(yf_tm_evt_driver_in_t* tm_evt_driver);
 
 static void yf_add_near_timer(yf_tm_evt_driver_in_t* tm_evt_driver
@@ -25,6 +13,8 @@ static void yf_timeout_handler(yf_tm_evt_driver_in_t* tm_evt_driver
 static yf_int_t yf_check_near_timer_list(yf_tm_evt_driver_in_t* tm_evt_driver
                 , yf_u8_t list_offset, yf_int_t diff_periods, yf_u16_t bit_val);
 
+static yf_int_t yf_poll_timer(yf_tm_evt_driver_in_t* tm_evt_driver);
+
 
 #define yf_far_timer_inc(tm_evt_driver, i) yf_cicur_add( \
                         tm_evt_driver->far_tm_roll_index, \
@@ -34,38 +24,10 @@ static yf_int_t yf_check_near_timer_list(yf_tm_evt_driver_in_t* tm_evt_driver
                         tm_evt_driver->near_tm_roll_index, i, 128)
 
 
-static void yf_init_bit_indexs()
-{
-        static yf_int_t  inited = 0;
-        if (inited)
-                return;
-        inited = 1;
-        yf_u32_t i, bit_val;
-
-        for (i = 0; i < YF_ARRAY_SIZE(yf_bit_indexs); ++i)
-        {
-                yf_s8_t  index = 0, offset = 0;
-                yf_s8_t *indexs = yf_bit_indexs[i].indexs;
-                
-                for (bit_val = i; bit_val; bit_val >>= 1, ++index)
-                {
-                        if (!yf_test_bit(bit_val, 0))
-                                continue;
-
-                        indexs[offset++] = index;
-                }
-
-                if (offset < 16)
-                        indexs[offset] = YF_END_INDEX;
-        }
-}
-
-
 yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_evt_driver
                 , yf_u32_t nstimers, yf_log_t* log)
 {
         yf_s32_t i;
-        yf_init_bit_indexs();
         
         tm_evt_driver->pevents = yf_alloc(sizeof(yf_tm_evt_link_t) * nstimers);
         if (tm_evt_driver->pevents == NULL) {
@@ -73,7 +35,7 @@ yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_evt_driver
                 return YF_ERROR;
         }
 
-        YF_INIT_SLIST_HEAD(&tm_evt_driver->free_list);
+        yf_init_slist_head(&tm_evt_driver->free_list);
 
         for (i = (yf_s32_t)nstimers-1; i >= 0; --i)
         {
@@ -82,14 +44,15 @@ yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_evt_driver
         }
         
         for (i = 0; (yf_u32_t)i < YF_ARRAY_SIZE(tm_evt_driver->far_tm_lists); ++i)
-                YF_INIT_LIST_HEAD(&tm_evt_driver->far_tm_lists[i]);
+                yf_init_list_head(&tm_evt_driver->far_tm_lists[i]);
 
-        YF_INIT_LIST_HEAD(&tm_evt_driver->too_far_tm_list);
+        yf_init_list_head(&tm_evt_driver->too_far_tm_list);
 
         for (i = 0; (yf_u32_t)i < YF_ARRAY_SIZE(tm_evt_driver->near_tm_lists); ++i)
-                YF_INIT_LIST_HEAD(&tm_evt_driver->near_tm_lists[i]);
+                yf_init_list_head(&tm_evt_driver->near_tm_lists[i]);
 
         tm_evt_driver->tm_period_cnt = 0;
+        tm_evt_driver->poll = yf_poll_timer;
 
         return  YF_OK;
 }
@@ -696,8 +659,10 @@ yf_int_t  yf_alloc_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t** tm_evt
         return  YF_OK;
 }
 
-yf_int_t  yf_free_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t* tm_evt)
+yf_int_t  yf_free_tm_evt(yf_tm_evt_t* tm_evt)
 {
+        yf_evt_driver_t* driver = tm_evt->driver;
+        
         yf_tm_evt_driver_in_t* tm_evt_driver 
                         = &((yf_evt_driver_in_t*)driver)->tm_driver;
         yf_tm_evt_link_t* alloc_evt = container_of(tm_evt, yf_tm_evt_link_t, evt);
@@ -712,5 +677,30 @@ yf_int_t  yf_free_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t* tm_evt)
 
         yf_slist_push(&alloc_evt->timer.free_linker, &tm_evt_driver->free_list);
         return  YF_OK;
+}
+
+
+yf_int_t   yf_register_tm_evt(yf_tm_evt_t* tm_evt
+                , yf_time_t  *time_out)
+{
+        yf_evt_driver_t* driver = tm_evt->driver;
+        
+        yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        yf_tm_evt_link_t* tm_evt_link = container_of(tm_evt, yf_tm_evt_link_t, evt);
+        yf_set_timer_val(tm_evt_link, *time_out, 0);
+        
+        return  yf_add_timer(&evt_driver->tm_driver, 
+                        &tm_evt_link->timer, tm_evt->log);
+}
+
+
+yf_int_t   yf_unregister_tm_evt(yf_tm_evt_t* tm_evt)
+{
+        yf_evt_driver_t* driver = tm_evt->driver;
+        
+        yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        
+        return  yf_del_timer(&evt_driver->tm_driver, 
+                        &container_of(tm_evt, yf_tm_evt_link_t, evt)->timer, tm_evt->log);
 }
 

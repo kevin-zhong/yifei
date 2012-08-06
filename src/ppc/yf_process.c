@@ -34,6 +34,7 @@ yf_init_processs(yf_log_t *log)
 yf_pid_t
 yf_spawn_process(yf_spawn_proc_pt proc
                  , void *data, char *name, yf_int_t respawn
+                 , yf_proc_exit_pt  exit_cb
                  , yf_log_t *log)
 {
         unsigned long on;
@@ -62,8 +63,7 @@ yf_spawn_process(yf_spawn_proc_pt proc
                 }
         }
 
-
-        if (respawn != YF_PROCESS_DETACHED)
+        if (respawn != YF_PROC_DETACH)
         {
                 if (socketpair(AF_LOCAL, SOCK_STREAM, 0, yf_processes[s].channel) == -1)
                 {
@@ -86,13 +86,16 @@ yf_spawn_process(yf_spawn_proc_pt proc
                         return YF_INVALID_PID;
                 }
 
-                if (yf_nonblocking(yf_processes[s].channel[1]) == -1)
+                if (respawn == YF_PROC_CHILD)
                 {
-                        yf_log_error(YF_LOG_ALERT, log, yf_errno,
-                                     yf_nonblocking_n " failed while spawning \"%s\"",
-                                     name);
-                        yf_close_channel(yf_processes[s].channel, log);
-                        return YF_INVALID_PID;
+                        if (yf_nonblocking(yf_processes[s].channel[1]) == -1)
+                        {
+                                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                                             yf_nonblocking_n " failed while spawning \"%s\"",
+                                             name);
+                                yf_close_channel(yf_processes[s].channel, log);
+                                return YF_INVALID_PID;
+                        }
                 }
 
                 on = 1;
@@ -129,8 +132,7 @@ yf_spawn_process(yf_spawn_proc_pt proc
                         yf_close_channel(yf_processes[s].channel, log);
                         return YF_INVALID_PID;
                 }
-
-                yf_channel = yf_processes[s].channel[1];
+                yf_channel = yf_processes[s].channel[1];                
         }
         else {
                 yf_processes[s].channel[0] = -1;
@@ -138,7 +140,6 @@ yf_spawn_process(yf_spawn_proc_pt proc
         }
 
         yf_process_slot = s;
-
 
         pid = fork();
 
@@ -151,6 +152,14 @@ yf_spawn_process(yf_spawn_proc_pt proc
                 return YF_INVALID_PID;
 
         case 0:
+                if (yf_proc_readable(respawn))
+                {
+                        dup2(yf_processes[s].channel[1], STDOUT_FILENO);
+                }
+                if (yf_proc_writable(respawn))
+                {
+                        dup2(yf_processes[s].channel[1], STDIN_FILENO);
+                }
                 yf_pid = yf_getpid();
                 yf_close_parent_channels(log);
                 proc(data, log);
@@ -171,43 +180,12 @@ yf_spawn_process(yf_spawn_proc_pt proc
                 return pid;
         }
 
+        yf_processes[s].type = respawn;
         yf_processes[s].proc = proc;
+        yf_processes[s].exit_cb = exit_cb;
         yf_processes[s].data = data;
         yf_processes[s].name = name;
         yf_processes[s].exiting = 0;
-
-        switch (respawn)
-        {
-        case YF_PROCESS_NORESPAWN:
-                yf_processes[s].respawn = 0;
-                yf_processes[s].just_spawn = 0;
-                yf_processes[s].detached = 0;
-                break;
-
-        case YF_PROCESS_JUST_SPAWN:
-                yf_processes[s].respawn = 0;
-                yf_processes[s].just_spawn = 1;
-                yf_processes[s].detached = 0;
-                break;
-
-        case YF_PROCESS_RESPAWN:
-                yf_processes[s].respawn = 1;
-                yf_processes[s].just_spawn = 0;
-                yf_processes[s].detached = 0;
-                break;
-
-        case YF_PROCESS_JUST_RESPAWN:
-                yf_processes[s].respawn = 1;
-                yf_processes[s].just_spawn = 1;
-                yf_processes[s].detached = 0;
-                break;
-
-        case YF_PROCESS_DETACHED:
-                yf_processes[s].respawn = 0;
-                yf_processes[s].just_spawn = 0;
-                yf_processes[s].detached = 1;
-                break;
-        }
 
         if (s == yf_last_process)
         {
@@ -224,7 +202,7 @@ yf_pid_t
 yf_execute(yf_exec_ctx_t *ctx, yf_log_t *log)
 {
         return yf_spawn_process(yf_execute_proc, ctx, ctx->name,
-                                YF_PROCESS_DETACHED, log);
+                                ctx->type, ctx->exit_cb, log);
 }
 
 
@@ -241,6 +219,17 @@ yf_execute_proc(void *data, yf_log_t *log)
         }
 
         exit(1);
+}
+
+yf_int_t yf_pid_slot(yf_pid_t  pid)
+{
+        yf_int_t i1 = 0;
+        for ( i1 = 0; i1 < yf_last_process; i1++ )
+        {
+                if (pid == yf_processes[i1].pid)
+                        return i1;
+        }
+        return  -1;
 }
 
 yf_int_t yf_daemon(yf_log_t *log)
@@ -343,6 +332,7 @@ yf_close_parent_channels(yf_log_t *log)
 static void
 yf_pass_open_channel(yf_log_t *log)
 {
+        uint32_t i1 = 0;
         yf_channel_t ch;
 
         ch.command = YF_CMD_OPEN_CHANNEL;
@@ -356,7 +346,8 @@ yf_pass_open_channel(yf_log_t *log)
         {
                 if (i == yf_process_slot
                     || yf_processes[i].pid == -1
-                    || yf_processes[i].channel[0] == -1)
+                    || yf_processes[i].channel[0] == -1
+                    || yf_processes[i].type != YF_PROC_CHILD)
                 {
                         continue;
                 }

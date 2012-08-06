@@ -17,7 +17,7 @@ struct yf_slist_part
 typedef  struct  yf_slist_part  yf_slist_part_t;
 
 #define YF_EMPTY_SLIST_INIT(name) { NULL }
-#define YF_INIT_SLIST_HEAD(part) ((part)->next = NULL)
+#define yf_init_slist_head(part) ((part)->next = NULL)
 
 #define yf_slist_push(new_node, part) do { \
         (new_node)->next = (part)->next; \
@@ -58,7 +58,7 @@ typedef  struct  yf_list_part  yf_list_part_t;
 //#define YF_LIST_HEAD(name) \
 //        struct yf_list_part_t name = YF_EMPTY_LIST_INIT(name)
 
-#define YF_INIT_LIST_HEAD(ptr) do { \
+#define yf_init_list_head(ptr) do { \
         (ptr)->next = (ptr); (ptr)->prev = (ptr); \
 } while (0)
 
@@ -101,7 +101,7 @@ static inline void __yf_list_del(yf_list_part_t *_prev, yf_list_part_t *_next)
 
 #define  yf_list_del_init(entry) do { \
         __yf_list_del((entry)->prev, (entry)->next); \
-        YF_INIT_LIST_HEAD(entry); \
+        yf_init_list_head(entry); \
 } while (0)
 
 
@@ -148,7 +148,7 @@ static inline void __yf_list_splice(yf_list_part_t *list, yf_list_part_t *part)
 #define  yf_list_splice(list, part) do { \
         if (!yf_list_empty(list)) { \
                 __yf_list_splice(list, part); \
-                YF_INIT_LIST_HEAD(list); \
+                yf_init_list_head(list); \
         } \
 } while(0)
 

@@ -7,8 +7,8 @@ yf_int_t   yf_init_fd_driver(yf_fd_evt_driver_in_t* fd_evt_driver
 {
         yf_s32_t  try_poll_type;
         
-        YF_INIT_LIST_HEAD(&fd_evt_driver->all_evt_list);
-        YF_INIT_LIST_HEAD(&fd_evt_driver->ready_list);
+        yf_init_list_head(&fd_evt_driver->all_evt_list);
+        yf_init_list_head(&fd_evt_driver->ready_list);
 
         fd_evt_driver->evts_capcity = nfds;
         fd_evt_driver->pevents = yf_alloc(sizeof(yf_fd_evt_in_t) * nfds);
@@ -121,6 +121,8 @@ yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t*  driver, yf_fd_t fd
                 yf_log_error(YF_LOG_ERR, log, 0, "fd=%d add poll failed", fd);
                 
                 yf_free_fd_evt(*read, *write);
+                *read = NULL;
+                *write = NULL;
                 return YF_ERROR;
         }
 

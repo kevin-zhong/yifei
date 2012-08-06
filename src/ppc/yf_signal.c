@@ -1,93 +1,47 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
-static yf_log_t *sig_log;
-
-extern  yf_signal_t  signals[];
-
-yf_int_t
-yf_init_signals(yf_log_t *log)
+yf_int_t yf_set_sig_handler(int signo, signal_ptr sig_handler, yf_log_t *log)
 {
-        sig_log = log;
-        
-        yf_signal_t *sig;
         struct sigaction sa;
+        yf_memzero(&sa, sizeof(struct sigaction));
+        sa.sa_handler = sig_handler;
 
-        for (sig = signals; sig->signo != 0; sig++)
-        {
-                yf_memzero(&sa, sizeof(struct sigaction));
-
-                if (sig->setval == NULL)
-                        sa.sa_handler = SIG_IGN;
-                else
-                        sa.sa_handler = yf_signal_handler;
-                
-                sigemptyset(&sa.sa_mask);
-                
-                if (sigaction(sig->signo, &sa, NULL) == -1)
-                {
-                        yf_log_error(YF_LOG_EMERG, sig_log, yf_errno,
-                                     "sigaction(%s) failed", sig->signame);
-                        return YF_ERROR;
-                }
-        }
-
-        return YF_OK;
-}
-
-
-void
-yf_signal_handler(int signo)
-{
-        yf_int_t ignore;
-        yf_err_t err;
-        yf_signal_t *sig;
-
-        ignore = 0;
-
-        err = yf_errno;
-
-        for (sig = signals; sig->signo != 0; sig++)
-        {
-                if (sig->signo == signo)
-                {
-                        break;
-                }
-        }
-
-        *sig->setval = 1;
+        sigemptyset(&sa.sa_mask);
         
-        /*yf_log_error(YF_LOG_NOTICE, sig_log, 0,
-                     "signal %d (%s) received", signo, sig->signame);
-
-        if (signo == SIGCHLD)
+        if (sigaction(signo, &sa, NULL) == -1)
         {
-                yf_process_get_status();
-        }*/
-
-        yf_set_errno(err);
+                yf_log_error(YF_LOG_EMERG, log, yf_errno,
+                             "sigaction signo(%d) failed", signo);
+                return YF_ERROR;
+        }
+        return  YF_OK;
 }
 
-
 void
-yf_process_get_status()
+yf_process_get_status(yf_log_t *log)
 {
+        yf_u8_t  proc_slot[YF_MAX_PROCESSES] = {0};
+        yf_u8_t  max_size = YF_MAX_PROCESSES, exit_size = 0;
+        
         int status;
         char *process;
         yf_pid_t pid;
         yf_err_t err;
         yf_int_t i;
         yf_uint_t one;
+        yf_process_t *proc;
 
         one = 0;
 
-        for (;; )
+        while (exit_size < max_size)
         {
                 pid = waitpid(-1, &status, WNOHANG);
+                yf_log_debug1(YF_LOG_DEBUG, log, 0, "waitpid ret=%P", pid);
 
                 if (pid == 0)
                 {
-                        return;
+                        goto end;
                 }
 
                 if (pid == -1)
@@ -101,12 +55,12 @@ yf_process_get_status()
 
                         if (err == YF_ECHILD && one)
                         {
-                                return;
+                                goto end;
                         }
 
-                        yf_log_error(YF_LOG_ALERT, sig_log, err,
+                        yf_log_error(YF_LOG_ALERT, log, err,
                                      "waitpid() failed");
-                        return;
+                        goto end;
                 }
                 
                 one = 1;
@@ -122,40 +76,42 @@ yf_process_get_status()
                                 break;
                         }
                 }
+                
+                proc_slot[exit_size++] = i;
 
                 if (WTERMSIG(status))
                 {
 #ifdef WCOREDUMP
-                        yf_log_error(YF_LOG_ALERT, sig_log, 0,
+                        yf_log_error(YF_LOG_ALERT, log, 0,
                                      "%s %P exited on signal %d%s",
                                      process, pid, WTERMSIG(status),
                                      WCOREDUMP(status) ? " (core dumped)" : "");
 #else
-                        yf_log_error(YF_LOG_ALERT, sig_log, 0,
+                        yf_log_error(YF_LOG_ALERT, log, 0,
                                      "%s %P exited on signal %d",
                                      process, pid, WTERMSIG(status));
 #endif
                 }
                 else {
-                        yf_log_error(YF_LOG_NOTICE, sig_log, 0,
+                        yf_log_error(YF_LOG_NOTICE, log, 0,
                                      "%s %P exited with code %d",
                                      process, pid, WEXITSTATUS(status));
                 }
+        }
 
-                if (WEXITSTATUS(status) == 2 && yf_processes[i].respawn)
-                {
-                        yf_log_error(YF_LOG_ALERT, sig_log, 0,
-                                     "%s %P exited with fatal code %d "
-                                     "and can not be respawn",
-                                     process, pid, WEXITSTATUS(status));
-                        yf_processes[i].respawn = 0;
-                }
+end:
+        for (i = 0; i < exit_size; ++i)
+        {
+                proc = yf_processes + proc_slot[i];
+                if (proc->exit_cb)
+                        proc->exit_cb(proc);
         }
 }
 
 
 yf_int_t
-yf_os_signal_process(char *name, yf_int_t pid, yf_log_t *log)
+yf_os_signal_process(yf_signal_t* signals
+                , char *name, yf_int_t pid, yf_log_t *log)
 {
         yf_signal_t *sig;
 

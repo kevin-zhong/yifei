@@ -32,7 +32,7 @@ void on_poll(yf_evt_driver_t *evt_driver, void *, yf_log_t *log)
                         yf_log_debug2(YF_LOG_DEBUG, log, 0, "unregist tm evt, index=%d, ms=%d",
                                       index, tv_ms[index]);
 
-                        yf_int_t ret = yf_unregister_tm_evt(evt_driver, tm_evt);
+                        yf_int_t ret = yf_unregister_tm_evt(tm_evt);
                         assert(ret == YF_OK);
                         ++tm_cnt;
                         tv_ms[index] = 0;
@@ -151,7 +151,7 @@ void  start_tm_test(void *data, yf_log_t *log)
 
                 tv_ms[i] = ::random() % 392144;
                 yf_ms_2_time(tv_ms[i], &utime);
-                ret = yf_register_tm_evt(_evt_driver, tm_evt, &utime);
+                ret = yf_register_tm_evt(tm_evt, &utime);
                 ASSERT_EQ(ret, YF_OK);
 
                 tm_evts[i] = tm_evt;
@@ -224,7 +224,7 @@ TEST_F(DriverTestor, Timer)
 TEST_F(DriverTestor, TmFd)
 {
         yf_pid_t pid = yf_spawn_process(start_tm_test, (void*)-1, "tm_test_child", 
-                        YF_PROCESS_NORESPAWN, &_log);
+                        YF_PROC_CHILD, NULL, &_log);
 
         for (int i = 0; true; ++i)
         {
@@ -264,6 +264,8 @@ int main(int argc, char **argv)
 {
         yf_int_t ret = yf_save_argv(&_log, argc, argv);
         assert(ret == YF_OK);
+
+        yf_init_bit_indexs();
         
         testing::InitGoogleTest(&argc, (char **)argv);
         return RUN_ALL_TESTS();

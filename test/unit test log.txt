@@ -1,0 +1,29 @@
+[==========] Running 1 test from 1 test case.
+[----------] Global test environment set-up.
+[----------] 1 test from ProcTestor
+[ RUN      ] ProcTestor.ShareMem
+child process_3, pid=16840
+child process_4, pid=16841
+child process_5, pid=16842
+child process_6, pid=16843
+child process_6 end, pid=16843
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:81][alert][16836#3959637088]: empty_child_proc 16839 exited on signal 11
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16843 exited with code 0
+2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 1
+child process_4 end, pid=16841
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16841 exited with code 0
+2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 2
+child process_5 end, pid=16842
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16842 exited with code 0
+2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 3
+child process_3 end, pid=16840
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16840 exited with code 0
+2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 4
+last cnt=1584032
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 1) failed (3: No such process)
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 28) failed (3: No such process)
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 3) failed (3: No such process)
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: test_channel_func 16837 exited with code 0
+2012/08/03 12:01:03 402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 1
+2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: test_channel_func 16838 exited with code 0
+2012/08/03 12:01:03 402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 2

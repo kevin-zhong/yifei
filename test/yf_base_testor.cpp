@@ -56,6 +56,36 @@ TEST_F(BaseTest, BitOp)
 
         ASSERT_EQ(yf_cicur_add(5, 3, 8), 0);
         ASSERT_EQ(yf_cicur_add(7, 15, 8), 6);
+
+        yf_u64_t test_val[] = {58842421LLU, 588425557421LLU, 27444222LLU, 
+                        877LLU, 680000000000LLU, 7777777777777777LLU, 1222454548923LLU, 
+                        5522111546453424233LLU, 555541122121212LLU, 
+                        (yf_u64_t(1))<<50, (yf_u64_t(1))<<32, (yf_u64_t(1))<<62};
+
+        yf_bit_set_t  bit_set;
+        yf_set_bits cacu_bits, get_bits;
+        
+        for (int i = 0; i < YF_ARRAY_SIZE(test_val); ++i)
+        {
+                yf_memzero_st(cacu_bits);
+                yf_memzero_st(get_bits);
+
+                yf_int_t  index = 0, offset = 0;
+                
+                for (bit_val = test_val[i]; bit_val; bit_val >>= 1, ++index)
+                {
+                        if (!yf_test_bit(bit_val, 0))
+                                continue;
+                        cacu_bits[offset++] = index;
+                }
+                cacu_bits[offset] = YF_END_INDEX;
+                printf("test_val=%ld have %d bits set\n", test_val[i], offset);
+
+                bit_set.bit_64 = test_val[i];
+                yf_get_set_bits(&bit_set, get_bits);
+
+                ASSERT_EQ(memcmp(cacu_bits, get_bits, sizeof(yf_set_bits)), 0);
+        }
 }
 
 
@@ -94,8 +124,8 @@ TEST_F(BaseTest, List)
 {
         yf_list_part_t  list1, list2;
         
-        YF_INIT_LIST_HEAD(&list1);
-        YF_INIT_LIST_HEAD(&list2);
+        yf_init_list_head(&list1);
+        yf_init_list_head(&list2);
 
         int i;
 
@@ -303,7 +333,6 @@ TEST_F(BaseTest, StringLog)
                                         copy_buf, &str_tmp, buf[0], copy_buf);
                 }
         }
-        
 }
 
 
@@ -376,6 +405,8 @@ int main(int argc, char **argv)
 {
         srandom(time(NULL));
         yf_pid = getpid();
+
+        yf_init_bit_indexs();
 
         yf_cpuinfo();
 

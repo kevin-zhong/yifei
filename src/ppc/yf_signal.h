@@ -11,9 +11,13 @@
 #define YF_TERMINATE_SIGNAL     TERM
 #define YF_NOACCEPT_SIGNAL      WINCH
 #define YF_RECONFIGURE_SIGNAL   HUP
+#define YF_KILL_SIGNAL  KILL
 
 #define YF_SWITCH_LOG_SIGNAL   USR1
 #define YF_CHANGEBIN_SIGNAL     USR2
+
+
+typedef void (*signal_ptr)(int signo);
 
 
 typedef struct
@@ -21,15 +25,20 @@ typedef struct
         int   signo;
         char *signame;
         char *name;
-        
-        sig_atomic_t*  setval;
-} yf_signal_t;
 
-yf_int_t yf_init_signals(yf_log_t *log);
-void yf_signal_handler(int signo);
+        signal_ptr sig_handler;
+} 
+yf_signal_t;
 
-yf_int_t yf_os_signal_process(char *name, yf_int_t pid, yf_log_t *log);
-void yf_process_get_status();
+yf_int_t yf_set_sig_handler(int signo, signal_ptr sig_handler, yf_log_t *log);
+
+yf_int_t yf_os_signal_process(yf_signal_t* signals
+                , char *name, yf_int_t pid, yf_log_t *log);
+
+void yf_process_get_status(yf_log_t *log);
+
+#define yf_proc_exit_err(status) (WIFEXITED(status) == 0)
+#define yf_proc_exit_code(status) WEXITSTATUS(status)
 
 #endif
 

@@ -1,8 +1,7 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
-#include <net/yf_net.h>
 #include <mio_driver/yf_event.h>
-
+#include "yf_send_recv.h"
 
 #ifndef IOV_MAX
 #define YF_IOVS  64
@@ -17,19 +16,19 @@
 #endif
 
 ssize_t
-yf_unix_recv(yf_connection_t *c, char *buf, size_t size)
+yf_unix_recv(fd_rw_ctx_t *ctx, char *buf, size_t size)
 {
         ssize_t n;
         yf_err_t err;
         yf_fd_event_t *rev;
 
-        rev = c->read;
+        rev = ctx->fd_evt;
 
         do {
-                n = recv(c->fd, buf, size, 0);
+                n = recv(rev->fd, buf, size, 0);
 
-                yf_log_debug3(YF_LOG_DEBUG, c->log, 0,
-                               "recv: fd:%d %d of %d", c->fd, n, size);
+                yf_log_debug3(YF_LOG_DEBUG, rev->log, 0,
+                               "recv: fd:%d %d of %d", rev->fd, n, size);
 
                 if (n == 0)
                 {
@@ -43,7 +42,7 @@ yf_unix_recv(yf_connection_t *c, char *buf, size_t size)
                         {
                                 rev->ready = 0;
                         }
-
+                        ctx->rw_cnt += n;
                         return n;
                 }
 
@@ -51,15 +50,17 @@ yf_unix_recv(yf_connection_t *c, char *buf, size_t size)
 
                 if (YF_EAGAIN(err) || err == YF_EINTR)
                 {
-                        yf_log_debug0(YF_LOG_DEBUG, c->log, err,
+                        yf_log_debug0(YF_LOG_DEBUG, rev->log, err,
                                        "recv() not ready");
                         n = YF_AGAIN;
                 }
                 else {
-                        n = yf_connection_error(c, err, "recv() failed");
+                        n = YF_ERROR;
+                        yf_log_error(YF_LOG_ERR, rev->log, err, "recv() failed");
                         break;
                 }
-        } while (err == YF_EINTR);
+        } 
+        while (err == YF_EINTR);
 
         rev->ready = 0;
 
@@ -73,7 +74,7 @@ yf_unix_recv(yf_connection_t *c, char *buf, size_t size)
 
 
 ssize_t
-yf_readv_chain(yf_connection_t *c, yf_chain_t *chain)
+yf_readv_chain(fd_rw_ctx_t *ctx, yf_chain_t *chain)
 {
         char *prev;
         ssize_t n, size;
@@ -90,7 +91,9 @@ yf_readv_chain(yf_connection_t *c, yf_chain_t *chain)
         vec.nelts = 0;
         vec.size = sizeof(struct iovec);
         vec.nalloc = YF_IOVS;
-        vec.pool = c->pool;
+        vec.pool = ctx->pool;
+
+        rev = ctx->fd_evt;
 
         /* coalesce the neighbouring bufs */
 
@@ -116,13 +119,11 @@ yf_readv_chain(yf_connection_t *c, yf_chain_t *chain)
                 chain = chain->next;
         }
 
-        yf_log_debug2(YF_LOG_DEBUG, c->log, 0,
+        yf_log_debug2(YF_LOG_DEBUG, rev->log, 0,
                        "readv: %d:%d", vec.nelts, iov->iov_len);
 
-        rev = c->read;
-
         do {
-                n = readv(c->fd, (struct iovec *)vec.elts, vec.nelts);
+                n = readv(rev->fd, (struct iovec *)vec.elts, vec.nelts);
 
                 if (n == 0)
                 {
@@ -138,6 +139,7 @@ yf_readv_chain(yf_connection_t *c, yf_chain_t *chain)
                                 rev->ready = 0;
                         }
 
+                        ctx->rw_cnt += n;
                         return n;
                 }
 
@@ -145,12 +147,13 @@ yf_readv_chain(yf_connection_t *c, yf_chain_t *chain)
 
                 if (YF_EAGAIN(err) || err == YF_EINTR)
                 {
-                        yf_log_debug0(YF_LOG_DEBUG, c->log, err,
+                        yf_log_debug0(YF_LOG_DEBUG, rev->log, err,
                                        "readv() not ready");
                         n = YF_AGAIN;
                 }
                 else {
-                        n = yf_connection_error(c, err, "readv() failed");
+                        n = YF_ERROR;
+                        yf_log_error(YF_LOG_ERR, rev->log, err, "readv() failed");
                         break;
                 }
         } 
@@ -160,27 +163,27 @@ yf_readv_chain(yf_connection_t *c, yf_chain_t *chain)
 
         if (n == YF_ERROR)
         {
-                c->read->error = 1;
+                rev->error = 1;
         }
 
         return n;
 }
 
 ssize_t
-yf_unix_send(yf_connection_t *c, char *buf, size_t size)
+yf_unix_send(fd_rw_ctx_t *ctx, char *buf, size_t size)
 {
         ssize_t n;
         yf_err_t err;
         yf_fd_event_t *wev;
 
-        wev = c->write;
+        wev = ctx->fd_evt;
 
         for (;; )
         {
-                n = send(c->fd, buf, size, 0);
+                n = send(wev->fd, buf, size, 0);
 
-                yf_log_debug3(YF_LOG_DEBUG, c->log, 0,
-                               "send: fd:%d %d of %d", c->fd, n, size);
+                yf_log_debug3(YF_LOG_DEBUG, wev->log, 0,
+                               "send: fd:%d %d of %d", wev->fd, n, size);
 
                 if (n > 0)
                 {
@@ -189,7 +192,7 @@ yf_unix_send(yf_connection_t *c, char *buf, size_t size)
                                 wev->ready = 0;
                         }
 
-                        c->sent += n;
+                        ctx->rw_cnt += n;
 
                         return n;
                 }
@@ -198,7 +201,7 @@ yf_unix_send(yf_connection_t *c, char *buf, size_t size)
 
                 if (n == 0)
                 {
-                        yf_log_error(YF_LOG_ALERT, c->log, err, "send() returned zero");
+                        yf_log_error(YF_LOG_ALERT, wev->log, err, "send() returned zero");
                         wev->ready = 0;
                         return n;
                 }
@@ -207,7 +210,7 @@ yf_unix_send(yf_connection_t *c, char *buf, size_t size)
                 {
                         wev->ready = 0;
 
-                        yf_log_debug0(YF_LOG_DEBUG, c->log, err,
+                        yf_log_debug0(YF_LOG_DEBUG, wev->log, err,
                                        "send() not ready");
 
                         if (YF_EAGAIN(err))
@@ -217,7 +220,7 @@ yf_unix_send(yf_connection_t *c, char *buf, size_t size)
                 }
                 else {
                         wev->error = 1;
-                        (void)yf_connection_error(c, err, "send() failed");
+                        yf_log_error(YF_LOG_ERR, wev->log, err, "send() failed");
                         return YF_ERROR;
                 }
         }
@@ -225,7 +228,7 @@ yf_unix_send(yf_connection_t *c, char *buf, size_t size)
 
 
 yf_chain_t *
-yf_writev_chain(yf_connection_t *c, yf_chain_t *in, off_t limit)
+yf_writev_chain(fd_rw_ctx_t *ctx, yf_chain_t *in, off_t limit)
 {
         char *prev;
         ssize_t n, size, sent;
@@ -237,7 +240,7 @@ yf_writev_chain(yf_connection_t *c, yf_chain_t *in, off_t limit)
         yf_fd_event_t *wev;
         struct iovec *iov, iovs[YF_IOVS];
 
-        wev = c->write;
+        wev = ctx->fd_evt;
 
         if (!wev->ready)
         {
@@ -257,7 +260,7 @@ yf_writev_chain(yf_connection_t *c, yf_chain_t *in, off_t limit)
         vec.elts = iovs;
         vec.size = sizeof(struct iovec);
         vec.nalloc = YF_IOVS;
-        vec.pool = c->pool;
+        vec.pool = ctx->pool;
 
         for (;; )
         {
@@ -298,7 +301,7 @@ yf_writev_chain(yf_connection_t *c, yf_chain_t *in, off_t limit)
                         send += size;
                 }
 
-                n = writev(c->fd, vec.elts, vec.nelts);
+                n = writev(wev->fd, vec.elts, vec.nelts);
 
                 if (n == -1)
                 {
@@ -314,25 +317,25 @@ yf_writev_chain(yf_connection_t *c, yf_chain_t *in, off_t limit)
 
                                 default:
                                         wev->error = 1;
-                                        (void)yf_connection_error(c, err, "writev() failed");
+                                        yf_log_error(YF_LOG_ERR, wev->log, err, "writev() failed");
                                         return YF_CHAIN_ERROR;
-                                }                                
+                                }
                         }
 
-                        yf_log_debug0(YF_LOG_DEBUG, c->log, err,
+                        yf_log_debug0(YF_LOG_DEBUG, wev->log, err,
                                        "writev() not ready");
                 }
 
                 sent = n > 0 ? n : 0;
 
-                yf_log_debug1(YF_LOG_DEBUG, c->log, 0, "writev: %z", sent);
+                yf_log_debug1(YF_LOG_DEBUG, wev->log, 0, "writev: %z", sent);
 
                 if (send - prev_send == sent)
                 {
                         complete = 1;
                 }
 
-                c->sent += sent;
+                ctx->rw_cnt += sent;
 
                 for (cl = in; cl; cl = cl->next)
                 {

@@ -47,7 +47,7 @@ yf_int_t  yf_init_time(yf_log_t* log)
 
         yf_utime_to_time(yf_start_times.clock_time, yf_start_times.clock_utime);
 
-        yf_log_time.len = sizeof("1970/01/01 12:00:00 000") - 1;
+        yf_log_time.len = sizeof("70/01/01 12:00:00 000") - 1;
         yf_log_time.data = yf_alloc(yf_log_time.len);
 
         yf_update_log_time(log);
@@ -196,8 +196,8 @@ static void yf_update_log_time(yf_log_t* log)
         yf_localtime(yf_now_times.wall_utime.tv_sec, &tm);
 
         yf_snprintf(yf_log_time.data, yf_log_time.len, 
-                "%4d/%02d/%02d %02d:%02d:%02d %03d",
-                tm.yf_tm_year, tm.yf_tm_mon,
+                "%2d/%02d/%02d %02d:%02d:%02d %03d",
+                tm.yf_tm_year - 2000, tm.yf_tm_mon,
                 tm.yf_tm_mday, tm.yf_tm_hour,
                 tm.yf_tm_min, tm.yf_tm_sec, 
                 yf_now_times.wall_utime.tv_usec >> 10);

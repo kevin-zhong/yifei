@@ -254,6 +254,8 @@ int main(int argc, char **argv)
 
         yf_cpuinfo();
 
+        yf_init_bit_indexs();
+
         _log.max_log_size = 8192;
         yf_log_open(NULL, &_log);
         _mem_pool = yf_create_pool(1024000, &_log);
