@@ -270,8 +270,10 @@ void yf_on_child_channle_rwable(yf_fd_event_t* evt)
         yf_processor_event_in_t* proc_evt_inner = (yf_processor_event_in_t*)evt->data;
         yf_processor_event_t* proc_evt = &proc_evt_inner->evt;
         yf_chain_t* chain = NULL;
+        yf_chain_t** last_cl_pos = NULL;
         fd_rw_ctx_t rw_ctx;
         yf_bufs_t  bufs;
+        yf_int_t  ret;
 
         assert(evt->ready);
 
@@ -282,17 +284,28 @@ void yf_on_child_channle_rwable(yf_fd_event_t* evt)
         {
                 bufs.num = 1;
                 bufs.size = yf_pagesize * 2;
-
+                
+                for (last_cl_pos = &proc_evt->read_chain; *last_cl_pos; 
+                                last_cl_pos = &(*last_cl_pos)->next)
+                {
+                        chain = *last_cl_pos;
+                }
+                
                 while (evt->ready)
                 {
-                        chain = yf_create_chain_of_bufs(proc_evt->pool, &bufs);
-                        if (chain == NULL)
-                                goto fail_end;
+                        if (chain == NULL || chain->buf->end == chain->buf->last)
+                        {
+                                chain = yf_create_chain_of_bufs(proc_evt->pool, &bufs);
+                                if (chain == NULL)
+                                        goto fail_end;
 
-                        yf_add_chain_to_tail(&proc_evt->read_chain, chain);
+                                *last_cl_pos = chain;
+                                last_cl_pos = &chain->next;
+                        }
 
                         rw_ctx.rw_cnt = 0;
-                        if (yf_readv_chain(&rw_ctx, chain) < 0)
+                        ret = yf_readv_chain(&rw_ctx, chain);
+                        if (ret < 0 && ret != YF_AGAIN)
                                 goto fail_end;
 
                         yf_log_debug1(YF_LOG_DEBUG, proc_evt->log, 0, 

@@ -403,6 +403,23 @@ void on_exe_callback(yf_processor_event_t* proc_evt)
                 || exe_ctx->name == g_py_shell)
         {
                 assert(proc_evt->error == 0 && proc_evt->exit_code == 0);
+                
+                if (exe_ctx->type == YF_PROC_POPEN_R)
+                {
+                        printf("--------------------------output exe stdout %s !!\n", 
+                                        exe_ctx->name);
+                        char buf_tmp[102400];
+                        for (yf_chain_t* cl = proc_evt->read_chain; cl; cl = cl->next)
+                        {
+                                printf("[bufsize=%d]", yf_buf_size(cl->buf));
+                                yf_memcpy(buf_tmp, cl->buf->pos, yf_buf_size(cl->buf));
+                                buf_tmp[yf_buf_size(cl->buf)] = 0;
+
+                                printf(buf_tmp);
+                                printf("[bufsize=%d done]", yf_buf_size(cl->buf));
+                        }
+                        printf("--------------------------\n\n");
+                }
         }
         else if (exe_ctx->name == g_timeout_shell)
         {
@@ -480,6 +497,8 @@ int main(int argc, char **argv)
 {
         srandom(time(NULL));
         yf_pid = getpid();
+        yf_pagesize = getpagesize();
+        printf("pagesize=%d\n", yf_pagesize);
 
         yf_cpuinfo();
 

@@ -77,10 +77,11 @@ ssize_t
 yf_readv_chain(fd_rw_ctx_t *ctx, yf_chain_t *chain)
 {
         char *prev;
-        ssize_t n, size;
+        ssize_t n, size, received;
         yf_err_t err;
         yf_array_t vec;
         yf_fd_event_t *rev;
+        yf_chain_t *cl;
         struct iovec *iov, iovs[YF_IOVS];
 
         prev = NULL;
@@ -97,11 +98,11 @@ yf_readv_chain(fd_rw_ctx_t *ctx, yf_chain_t *chain)
 
         /* coalesce the neighbouring bufs */
 
-        while (chain)
+        for (cl = chain; cl; cl = cl->next)
         {
-                if (prev == chain->buf->last)
+                if (prev == cl->buf->last)
                 {
-                        iov->iov_len += chain->buf->end - chain->buf->last;
+                        iov->iov_len += cl->buf->end - cl->buf->last;
                 }
                 else {
                         iov = yf_array_push(&vec);
@@ -110,20 +111,26 @@ yf_readv_chain(fd_rw_ctx_t *ctx, yf_chain_t *chain)
                                 return YF_ERROR;
                         }
 
-                        iov->iov_base = (void *)chain->buf->last;
-                        iov->iov_len = chain->buf->end - chain->buf->last;
+                        iov->iov_base = (void *)cl->buf->last;
+                        iov->iov_len = cl->buf->end - cl->buf->last;
                 }
 
-                size += chain->buf->end - chain->buf->last;
-                prev = chain->buf->end;
-                chain = chain->next;
+                size += cl->buf->end - cl->buf->last;
+                prev = cl->buf->end;
         }
 
         yf_log_debug2(YF_LOG_DEBUG, rev->log, 0,
                        "readv: %d:%d", vec.nelts, iov->iov_len);
+        if (iov->iov_len == 0)
+        {
+                yf_log_error(YF_LOG_WARN, rev->log, 0, "fd[%d] readv buf size=0", rev->fd);
+                return  0;
+        }
 
         do {
                 n = readv(rev->fd, (struct iovec *)vec.elts, vec.nelts);
+                yf_log_debug2(YF_LOG_DEBUG, rev->log, 0, "fd readv [%d] ret %d", 
+                                rev->fd, n);
 
                 if (n == 0)
                 {
@@ -138,7 +145,25 @@ yf_readv_chain(fd_rw_ctx_t *ctx, yf_chain_t *chain)
                         {
                                 rev->ready = 0;
                         }
+                        received = n;
 
+                        for (cl = chain; cl; cl = cl->next)
+                        {
+                                if (received == 0)
+                                        break;
+
+                                size = cl->buf->end - cl->buf->last;
+
+                                if (received >= size)
+                                {
+                                        received -= size;
+                                        cl->buf->last = cl->buf->end;
+                                        continue;
+                                }
+                                cl->buf->last += received;
+                                break;
+                        }
+                        
                         ctx->rw_cnt += n;
                         return n;
                 }
