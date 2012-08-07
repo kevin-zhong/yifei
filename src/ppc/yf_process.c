@@ -211,14 +211,20 @@ yf_execute_proc(void *data, yf_log_t *log)
 {
         yf_exec_ctx_t *ctx = data;
 
-        if (execve(ctx->path, ctx->argv, ctx->envp) == -1)
+        yf_int_t  ret = 0;
+        if (ctx->envp)
+                ret = execve(ctx->path, ctx->argv, ctx->envp);
+        else
+                ret = execvp(ctx->path, ctx->argv);
+        if (ret == -1)
         {
                 yf_log_error(YF_LOG_ALERT, log, yf_errno,
                              "execve() failed while executing %s \"%s\"",
                              ctx->name, ctx->path);
         }
 
-        exit(1);
+        //note, if execve failed, then exit(2)
+        exit(2);
 }
 
 yf_int_t yf_pid_slot(yf_pid_t  pid)

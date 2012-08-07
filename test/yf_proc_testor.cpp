@@ -351,8 +351,129 @@ TEST_F(ProcTestor, ShareMem)
 }
 
 
+/*
+* test proc event(like popen)
+*/
+yf_evt_driver_t * g_proc_driver = NULL;
+
+void on_exe_callback(yf_process_t* proc);
+
+char* g_normal_shell = "normal_shell";
+char* g_cat_shell = "cat_shell";
+char* g_py_shell = "py_shell";
+char* g_unexsit_exe = "unexsit_exe";
+char* g_timeout_shell = "timeout_shell";
+char* g_silent_shell = "silent_shell";
+char* g_killed_shell = "killed_shell";
+
+//1，命令字符串前后不能有空格，否则会出现 "permission denied(13) !!"
+//2，如果有参数，参数肯定需要大于1，因为第一个参数实际上是执行文件名字
+char* const normal_argv[] = {"cat", "./exe_ctx/un_xx_nu.txt", NULL};
+char* const cat_argv[] = {"cat", "./exe_ctx/cat_target.txt", NULL};
+char* const uname_argv[] = {"uname", "-a", NULL};
+char* const sleep_argv[] = {"sleep", "10", NULL};
+
+yf_exec_ctx_t exec_ctx[] = { 
+        {normal_argv[0], g_normal_shell, normal_argv, NULL, 
+                NULL, NULL, YF_PROC_POPEN_R}, 
+        {cat_argv[0], g_cat_shell, cat_argv, NULL, 
+                NULL, NULL, YF_PROC_POPEN_R}, 
+        {"./exe_ctx/echo.py", g_py_shell, NULL, NULL, 
+                NULL, NULL, YF_PROC_POPEN_R}, 
+        {sleep_argv[0], g_timeout_shell, sleep_argv, NULL, 
+                NULL, NULL, YF_PROC_POPEN_R}, 
+        {uname_argv[0], g_silent_shell, uname_argv, NULL, 
+                NULL, NULL, YF_PROC_DETACH}, 
+        {sleep_argv[0], g_killed_shell, sleep_argv, NULL, 
+                NULL, NULL, YF_PROC_DETACH},
+        {"./exe_ctx/test_unexsit", g_unexsit_exe, NULL, NULL, 
+                NULL, NULL, YF_PROC_POPEN_R}
+};
+
+void on_exe_callback(yf_processor_event_t* proc_evt)
+{
+        yf_exec_ctx_t* exe_ctx = &proc_evt->exec_ctx;
+        
+        if (exe_ctx->name == g_normal_shell)
+        {
+                assert(proc_evt->error == 0 && proc_evt->exit_code != 0);
+        }
+        else if (exe_ctx->name == g_cat_shell
+                || exe_ctx->name == g_silent_shell
+                || exe_ctx->name == g_py_shell)
+        {
+                assert(proc_evt->error == 0 && proc_evt->exit_code == 0);
+        }
+        else if (exe_ctx->name == g_timeout_shell)
+        {
+                assert(proc_evt->timeout);
+        }
+        else if (exe_ctx->name == g_killed_shell)
+        {
+                assert(proc_evt->error);
+        }
+        else if (exe_ctx->name == g_unexsit_exe)
+        {
+                assert(proc_evt->error == 0 && proc_evt->exit_code == 2);
+        }
+
+        if (++exit_cnt == YF_ARRAY_SIZE(exec_ctx))
+                yf_evt_driver_stop(g_proc_driver);
+}
+
+
+void on_exe_exit_signal(yf_int_t signo)
+{
+        yf_process_get_status(&_log);
+}
+
+yf_signal_t proc_evt_signals[] = {
+        { SIGCHLD,   "SIGCHLD",           "", on_exe_exit_signal},
+        { 0,              NULL,                "", NULL}
+};
+
+TEST_F(ProcTestor, ProcEvt)
+{
+        exit_cnt = 0;
+        erase_sigal_mask();
+        yf_set_sig_handler(SIGIO, SIG_IGN, &_log);
+
+        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
+        g_proc_driver = yf_evt_driver_create(&driver_init);
+
+        yf_register_singal_evts(g_proc_driver, proc_evt_signals, &_log);
+
+        yf_time_t  time_out = {6, 0};
+
+        for (yf_int_t i = 0; i < YF_ARRAY_SIZE(exec_ctx); ++i)
+        {
+                yf_exec_ctx_t* tex_ctx = exec_ctx + i;
+                
+                yf_processor_event_t* proc_evt;
+                yf_int_t ret = yf_alloc_proc_evt(g_proc_driver, &proc_evt, &_log);
+                
+                proc_evt->pool = _mem_pool;
+                proc_evt->exec_ctx = *tex_ctx;
+                proc_evt->ret_handler = on_exe_callback;
+                
+                ret = yf_register_proc_evt(proc_evt, &time_out);
+                ASSERT_EQ(ret, YF_OK);
+
+                if (tex_ctx->name == g_killed_shell)
+                {
+                        yf_process_t* proc = yf_get_proc_by_evt(proc_evt);
+                        kill(proc->pid, yf_signal_value(YF_KILL_SIGNAL));
+                }
+        }
+
+        yf_evt_driver_start(g_proc_driver);
+        yf_evt_driver_destory(g_proc_driver);
+}
+
+
 #ifdef TEST_F_INIT
 TEST_F_INIT(ProcTestor, ShareMem);
+TEST_F_INIT(ProcTestor, ProcEvt);
 #endif
 
 int main(int argc, char **argv)
@@ -375,7 +496,11 @@ int main(int argc, char **argv)
         assert(ret == YF_OK);
 
         ret = yf_save_argv(&_log, argc, argv);
-        assert(ret == YF_OK);        
+        assert(ret == YF_OK);
+        for (int i = 0; yf_os_environ[i]; ++i)
+        {
+                printf("os_env{ %s }\n", yf_os_environ[i]);
+        }
 
         ret = yf_init_setproctitle(&_log);
         assert(ret == YF_OK);

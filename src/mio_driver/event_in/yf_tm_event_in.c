@@ -149,10 +149,14 @@ yf_int_t   yf_del_timer(yf_tm_evt_driver_in_t* tm_evt_driver
         if (!yf_list_linked(&timer->linker))
                 return  YF_ERROR;
 
-        if (yf_is_fd_evt(timer))
+        if (yf_is_fd_evt(timer)) {
                 tm_evt_driver->fdtm_evts_num--;
-        else
+                assert(tm_evt_driver->fdtm_evts_num >= 0);
+        }
+        else {
                 tm_evt_driver->stm_evts_num--;
+                assert(tm_evt_driver->stm_evts_num >= 0);
+        }
 
         yf_log_debug2(YF_LOG_DEBUG, log, 0, "fd tm num=%d, single tm num=%d", 
                         tm_evt_driver->fdtm_evts_num, 
@@ -229,8 +233,10 @@ static void yf_list_timeout_handler(yf_tm_evt_driver_in_t* tm_evt_driver
         yf_list_for_each_safe(pos, keep, list)
         {
                 yf_timer_t* ptimer = yf_link_2_timer(pos);
-                yf_timeout_handler(tm_evt_driver, ptimer, is_nearest);
+
+                //note, must delete link first, sometimes, timeout handle will call tm calls
                 yf_list_del(pos);
+                yf_timeout_handler(tm_evt_driver, ptimer, is_nearest);
         }
 }
 
@@ -656,6 +662,7 @@ yf_int_t  yf_alloc_tm_evt(yf_evt_driver_t* driver, yf_tm_evt_t** tm_evt
 
         *tm_evt = &alloc_evt->evt;
         (*tm_evt)->log = log;
+        (*tm_evt)->driver = driver;
         return  YF_OK;
 }
 

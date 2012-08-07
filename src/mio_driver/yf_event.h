@@ -137,10 +137,10 @@ typedef struct yf_processor_event_s
         yf_chain_t  *write_chain;
         yf_chain_t  *read_chain;
 
-        yf_s8_t   processing:1;
-        yf_s8_t   timeout:1;
-        yf_s8_t   error:1;
-        yf_s8_t   exit_code:1;
+        yf_u16_t   processing:1;
+        yf_u16_t   timeout:1;
+        yf_u16_t   error:1;
+        yf_u16_t   exit_code:8;
 
         void*           data;
         yf_log_t*     log;
@@ -157,6 +157,8 @@ yf_int_t  yf_free_proc_evt(yf_processor_event_t* proc_evt);
 
 yf_int_t   yf_register_proc_evt(yf_processor_event_t* proc_evt, yf_time_t  *time_out);
 yf_int_t   yf_unregister_proc_evt(yf_processor_event_t* proc_evt);
+
+yf_process_t* yf_get_proc_by_evt(yf_processor_event_t* proc_evt);
 
 #endif
 

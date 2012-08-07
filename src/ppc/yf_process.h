@@ -31,18 +31,20 @@ typedef struct  yf_process_s
 
         yf_spawn_proc_pt proc;
         yf_proc_exit_pt  exit_cb;
-        void *          exit_data;
         
         void *           data;
         char *           name;
 
-        yf_int_t         type : 3;
-        yf_int_t         exiting : 1;
-        yf_int_t         exited : 1;
+        //int with 1 width error
+        yf_int_t         type : 8;
+        yf_int_t         exiting : 2;//must 2 bits
+        yf_int_t         exited : 2;
 } 
 yf_process_t;
 
-
+/*
+* if envp==NULL, then path can be relative path, else must abs... path
+*/
 typedef struct
 {
         char *       path;
@@ -50,6 +52,7 @@ typedef struct
         char *const *argv;
         char *const *envp;
 
+        void * data;
         yf_proc_exit_pt  exit_cb;
         yf_int_t       type;
 } 

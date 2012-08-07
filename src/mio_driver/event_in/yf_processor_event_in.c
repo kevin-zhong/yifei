@@ -4,7 +4,7 @@
 #include <mio_driver/yf_send_recv.h>
 
 static yf_int_t  yf_unregist_process_evt_in(yf_processor_event_in_t *pos);
-static void  yf_proc_evt_poll(yf_processor_event_in_t* proc_driver);
+static void  yf_proc_evt_poll(yf_proc_evt_driver_in_t* proc_driver);
 
 static void yf_on_child_channle_rwable(yf_fd_event_t* evt);
 static void yf_on_child_exe_timeout(yf_tm_evt_t* evt, yf_time_t* start);
@@ -99,6 +99,10 @@ yf_int_t  yf_unregist_process_evt_in(yf_processor_event_in_t *pos)
         //unregist channle event
         if (pos->channel_read_evt || pos->channel_write_evt)
         {
+                yf_log_debug1(YF_LOG_DEBUG, pos->evt.log, 0, 
+                                "destory rw channel, fd=%d", 
+                                pos->channel_read_evt->fd);
+                
                 yf_unregister_fd_evt(pos->channel_read_evt);
                 yf_unregister_fd_evt(pos->channel_write_evt);
                 
@@ -119,7 +123,6 @@ yf_int_t  yf_unregist_process_evt_in(yf_processor_event_in_t *pos)
         pid = proc->pid;
         
         proc->exit_cb = NULL;
-        proc->exit_data = NULL;
 
         //kill proc
         if (!proc->exited)
@@ -136,14 +139,20 @@ yf_int_t  yf_unregist_process_evt_in(yf_processor_event_in_t *pos)
         }
 
         //close channel
-        yf_close_channel(yf_processes[pos->proc_slot].channel, pos->evt.log);
+        if (proc->type != YF_PROC_DETACH)
+        {
+                yf_log_debug2(YF_LOG_DEBUG, pos->evt.log, 0, "close rw channel [%d-%d]", 
+                                proc->channel[0], 
+                                proc->channel[1]);
+                yf_close_channel(proc->channel, pos->evt.log);
+        }
 
         pos->proc_slot = -1;
         return  YF_OK;
 }
 
 
-void  yf_proc_evt_poll(yf_processor_event_in_t* proc_driver)
+void  yf_proc_evt_poll(yf_proc_evt_driver_in_t* proc_driver)
 {
 }
 
@@ -216,11 +225,12 @@ yf_int_t   yf_register_proc_evt(yf_processor_event_t* proc_evt, yf_time_t  *time
                 
                 if (YF_OK != yf_register_tm_evt(tm_evt, time_out))
                         goto fail_end;
+
+                proc_evt_inner->tm_evt = tm_evt;
         }
 
         //set ret callback
         proc->exit_cb = yf_on_child_exit;
-        proc->exit_data = proc_evt_inner;
 
         proc_evt->processing = 1;
 
@@ -240,6 +250,18 @@ yf_int_t   yf_unregister_proc_evt(yf_processor_event_t* proc_evt)
                         yf_processor_event_in_t, evt);
 
         return yf_unregist_process_evt_in(proc_evt_inner);
+}
+
+
+yf_process_t* yf_get_proc_by_evt(yf_processor_event_t* proc_evt)
+{
+        yf_processor_event_in_t * proc_evt_inner = container_of(proc_evt, 
+                        yf_processor_event_in_t, evt);
+
+        if (proc_evt_inner->proc_slot < 0)
+                return NULL;
+        else
+                return  yf_processes + proc_evt_inner->proc_slot;
 }
 
 
@@ -280,6 +302,7 @@ void yf_on_child_channle_rwable(yf_fd_event_t* evt)
                 if (!evt->eof)
                         yf_register_fd_evt(evt, NULL);
         }
+        
         else if (evt->type == YF_WEVT)
         {
                 rw_ctx.rw_cnt = 0;
@@ -320,7 +343,8 @@ void yf_on_child_exe_timeout(yf_tm_evt_t* evt, yf_time_t* start)
         yf_processor_event_t* proc_evt = &proc_evt_inner->evt;
         yf_process_t* proc = &yf_processes[proc_evt_inner->proc_slot];
 
-        yf_log_error(YF_LOG_WARN, proc_evt->log, 0, "%s execute timeout", 
+        yf_log_error(YF_LOG_WARN, proc_evt->log, 0, "%s(path=%s)  execute timeout", 
+                        proc_evt->exec_ctx.name, 
                         proc_evt->exec_ctx.path);
 
         proc_evt->timeout = 1;
@@ -332,19 +356,30 @@ void yf_on_child_exe_timeout(yf_tm_evt_t* evt, yf_time_t* start)
 
 void yf_on_child_exit(yf_process_t* proc)
 {
-        yf_processor_event_in_t* proc_evt_inner = (yf_processor_event_in_t*)proc->data;
-        yf_processor_event_t* proc_evt = &proc_evt_inner->evt;
+        //so bt...
+        yf_exec_ctx_t* exe_ctx = (yf_exec_ctx_t*)proc->data;
+        
+        yf_processor_event_t* proc_evt = container_of(exe_ctx, 
+                        yf_processor_event_t, exec_ctx);
+        yf_processor_event_in_t* proc_evt_inner = container_of(proc_evt, 
+                        yf_processor_event_in_t, evt);
 
         proc_evt->processing = 0;
         proc_evt->error = yf_proc_exit_err(proc->status);
         proc_evt->exit_code = yf_proc_exit_code(proc->status);
 
-        yf_log_debug3(YF_LOG_DEBUG, proc_evt->log, 0, "%s execute error=%d, exit_code=%d", 
+        yf_log_debug3(YF_LOG_DEBUG, proc_evt->log, 0, 
+                        "%s(path=%s) execute error=%d, exit_code=%d", 
+                        proc_evt->exec_ctx.name, 
                         proc_evt->exec_ctx.path, 
                         proc_evt->error, 
                         proc_evt->exit_code);
 
         yf_unregist_process_evt_in(proc_evt_inner);
         proc_evt->ret_handler(proc_evt);
+
+        yf_log_debug2(YF_LOG_DEBUG, proc_evt->log, 0, "%s(path=%s) ret handle done!", 
+                        proc_evt->exec_ctx.name, 
+                        proc_evt->exec_ctx.path);
 }
 

@@ -92,11 +92,12 @@ yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t*  driver, yf_fd_t fd
                                 fd, fd_evt_driver->evts_capcity);
                 return YF_ERROR;
         }
-
-        alloc_evt->use_flag = 1;
+        
         fd_evt_driver->evts_num++;
         
         yf_memzero(alloc_evt, sizeof(yf_fd_evt_in_t));
+        
+        alloc_evt->use_flag = 1;
         yf_list_add_tail(&alloc_evt->link, &fd_evt_driver->all_evt_list);
 
         *read = &alloc_evt->read.evt;
@@ -252,6 +253,10 @@ yf_int_t  yf_unregister_fd_evt(yf_fd_event_t* pevent)
                         return  YF_ERROR;                        
                 }
         }
+
+        yf_log_debug2(YF_LOG_DEBUG, pevent->log, 0, 
+                        "unregister fd evt, fd=%d, evt=%V", 
+                        pevent->fd, &yf_evt_tn(pevent));
 
         iner_evt->last_active_op_index = 0;
         iner_evt->active = 0;

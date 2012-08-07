@@ -27,3 +27,25 @@ last cnt=1584032
 2012/08/03 12:01:03 402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 1
 2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: test_channel_func 16838 exited with code 0
 2012/08/03 12:01:03 402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 2
+
+
+忘了设置 tm evt，导致一个子command退出后，timer还是保留下来了，但是也没造成什么大的问题，留下了一个警告而已；
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=5, near evt num=6, addr=000000001D3B9990
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: cat execute timeout
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3B9E50) 
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=4, near evt num=5, addr=000000001D3B99E0
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: ./exe_ctx/echo.py execute timeout
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3B9F10) 
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=3, near evt num=4, addr=000000001D3B9A30
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: sleep execute timeout
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_fd_event_in.c:149][error][7153#3777741920]: fd=10 not in use, evts_capcity=128
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:129][debug][7153#3777741920]: destory detach process, kill (7157, 9) success
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=2, near evt num=3, addr=000000001D3B9A80
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: uname execute timeout
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA090) 
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=1, near evt num=2, addr=000000001D3B9AD0
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: sleep execute timeout
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA150) 
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=0, near evt num=1, addr=000000001D3B9B20
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: ./exe_ctx/test_unexsit execute timeout
+12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA210) 

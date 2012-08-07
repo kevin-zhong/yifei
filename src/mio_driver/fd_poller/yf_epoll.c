@@ -70,6 +70,7 @@ static yf_fd_poll_t *yf_epoll_init(yf_u32_t maxfds)
         return  new_epoller;
 }
 
+
 static yf_int_t yf_epoll_uninit(yf_fd_poll_t *epoller)
 {
         yf_epoll_ctx_t *epoll_ctx = epoller->ctx->evt_poll->agen_data;
@@ -78,18 +79,35 @@ static yf_int_t yf_epoll_uninit(yf_fd_poll_t *epoller)
                 epoll_ctx->kpfd = -1;
         }
         yf_free(epoller);
+        return YF_OK;
 }
 
 static yf_int_t yf_epoll_del(yf_fd_poll_t *epoller, yf_fd_evt_in_t *fd_evt)
 {
         yf_epoll_ctx_t *epoll_ctx = epoller->ctx->evt_poll->agen_data;
+        int op;
+        struct epoll_event  ee;
         
         if (fd_evt->read.polled || fd_evt->write.polled)
         {
                 fd_evt->read.polled = 0;
                 fd_evt->write.polled = 0;
                 epoll_ctx->nfds--;
+                
+                op = EPOLL_CTL_DEL;
+                ee.events = 0;
+                ee.data.ptr = NULL;
+
+                if (epoll_ctl(epoll_ctx->kpfd, op, fd_evt->read.evt.fd, &ee) == -1) 
+                {
+                        yf_log_error(YF_LOG_ERR, fd_evt->read.evt.log, yf_errno,
+                                        "epoll_ctl del(%d, %d) failed", op, 
+                                        fd_evt->read.evt.fd);
+                        
+                        return YF_ERROR;
+                }
         }
+        return YF_OK;
 }
 
 

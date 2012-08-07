@@ -75,6 +75,7 @@ static yf_fd_poll_t *yf_select_init(yf_u32_t nfds)
 static yf_int_t yf_select_uninit(yf_fd_poll_t *poller)
 {
         yf_free(poller);
+        return YF_OK;
 }
 
 
@@ -175,9 +176,11 @@ static yf_int_t yf_select_deactivate(yf_fd_poll_t *poller, yf_fd_evt_link_t *evt
 static yf_int_t yf_select_del(yf_fd_poll_t* poller, yf_fd_evt_in_t* fd_evt)
 {
         if (fd_evt->read.polled)
-                yf_select_deactivate(poller, &fd_evt->read);
+                CHECK_OK(yf_select_deactivate(poller, &fd_evt->read));
         if (fd_evt->write.polled)
-                yf_select_deactivate(poller, &fd_evt->write);
+                CHECK_OK(yf_select_deactivate(poller, &fd_evt->write));
+
+        return YF_OK;
 }
 
 

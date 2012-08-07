@@ -194,7 +194,7 @@ void yf_add_chain_to_tail(yf_chain_t **head, yf_chain_t *chain)
 {
         yf_chain_t *cl;
         
-        if (*head)
+        if (!*head)
                 *head = chain;
         else {
                 for (cl = *head; cl->next; cl = cl->next)
