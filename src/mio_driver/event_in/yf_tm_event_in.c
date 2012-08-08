@@ -53,6 +53,10 @@ yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_evt_driver
 
         tm_evt_driver->tm_period_cnt = 0;
         tm_evt_driver->poll = yf_poll_timer;
+        tm_evt_driver->log = log;
+
+        //preset tm ms (there is no timers)
+        yf_update_nearest_tm_ms(tm_evt_driver);
 
         return  YF_OK;
 }
@@ -273,39 +277,67 @@ static yf_int_t yf_check_near_timer_list(yf_tm_evt_driver_in_t* tm_evt_driver
 
 static void yf_update_nearest_tm_ms(yf_tm_evt_driver_in_t* tm_evt_driver)
 {
-        yf_bit_set_t* bit_set = tm_evt_driver->near_tm_flags;
-
-#define _YF_SET_TM_MS(bitval, offset_bit) do { \
+#define _YF_SET_TM_MS(bitval, offset_bit) \
         tm_evt_driver->nearest_timeout_ms \
                 = ((yf_bit_indexs[bitval].indexs[0] + offset_bit + 1) << YF_TIMER_PRCS_MS_BIT); \
         yf_log_debug4(YF_LOG_DEBUG, tm_evt_driver->log, 0, \
                 "first_64=%L, second_64=%L, nearest tm index=%d, nearest tm=%ud", \
                 bit_set[0].bit_64, bit_set[1].bit_64, \
-                yf_bit_indexs[bitval].indexs[0] + offset_bit, tm_evt_driver->nearest_timeout_ms); \
-        } while (0)
+                yf_bit_indexs[bitval].indexs[0] + offset_bit, tm_evt_driver->nearest_timeout_ms);
 
 #define  _YF_GET_NEARSET_TM_MS(bits32, offset_bit) \
-        if (bits32[WORDS_LITTLE_PART].bit_32) { \
-                if (bits32[WORDS_LITTLE_PART].bit_16[WORDS_LITTLE_PART]) \
+        if (bits32[WORDS_LITTLE_PART].bit_32) \
+        { \
+                if (bits32[WORDS_LITTLE_PART].bit_16[WORDS_LITTLE_PART]) { \
                         _YF_SET_TM_MS(bits32[WORDS_LITTLE_PART].bit_16[WORDS_LITTLE_PART], offset_bit); \
-                else \
+                } \
+                else {\
                         _YF_SET_TM_MS(bits32[WORDS_LITTLE_PART].bit_16[1-WORDS_LITTLE_PART], offset_bit+16); \
+                } \
         } \
         else { \
-                if (bits32[1-WORDS_LITTLE_PART].bit_16[WORDS_LITTLE_PART]) \
+                if (bits32[1-WORDS_LITTLE_PART].bit_16[WORDS_LITTLE_PART]) { \
                         _YF_SET_TM_MS(bits32[1-WORDS_LITTLE_PART].bit_16[WORDS_LITTLE_PART], offset_bit+32); \
-                else \
+                } \
+                else { \
                         _YF_SET_TM_MS(bits32[1-WORDS_LITTLE_PART].bit_16[1-WORDS_LITTLE_PART], offset_bit+48); \
+                } \
         }
+
+        yf_bit_set_t* bit_set = tm_evt_driver->near_tm_flags;
+        yf_list_part_t *list;
         
-        if (bit_set[0].bit_64)
+        if (tm_evt_driver->near_evts_num)
         {
-                _YF_GET_NEARSET_TM_MS(bit_set[0].ubits, 0);
+                if (bit_set[0].bit_64)
+                {
+                        _YF_GET_NEARSET_TM_MS(bit_set[0].ubits, 0);
+                }
+                else {
+                        assert(bit_set[1].bit_64);
+                        _YF_GET_NEARSET_TM_MS(bit_set[1].ubits, 64);
+                }
         }
         else {
-                assert(bit_set[1].bit_64);
-                _YF_GET_NEARSET_TM_MS(bit_set[1].ubits, 64);
-        }        
+                yf_int_t unempty_inedex = 1;
+                
+                for (; unempty_inedex < 3; ++unempty_inedex)
+                {
+                        list = tm_evt_driver->far_tm_lists 
+                                        + yf_far_timer_inc(tm_evt_driver, unempty_inedex);
+                        if (!yf_list_empty(list))
+                                break;
+                }
+
+                //max check time=3*_YF_FAR_TIMER_PRCS_MS=0.768s
+                tm_evt_driver->nearest_timeout_ms 
+                                = unempty_inedex << _YF_FAR_TIMER_PRCS_MS_BIT;
+
+                yf_log_debug1(YF_LOG_DEBUG, tm_evt_driver->log, 0, 
+                                "no near evts, unempty_index=%d so nearest_timeout_ms=%d", 
+                                unempty_inedex, 
+                                tm_evt_driver->nearest_timeout_ms);
+        }       
 }
 
 
@@ -433,8 +465,8 @@ update_near_flags:
         assert(diff_periods >= 0);
         if (diff_periods == 0)
         {
-                if (tm_evt_driver->near_evts_num)
-                        yf_update_nearest_tm_ms(tm_evt_driver);
+                //will call this each near checker !!
+                yf_update_nearest_tm_ms(tm_evt_driver);
                 return YF_OK;
         }
 
@@ -546,29 +578,7 @@ update_near_flags:
         /*
         * check nearest timeout ms again...
         */
-        if (tm_evt_driver->near_evts_num)
-        {
-                yf_update_nearest_tm_ms(tm_evt_driver);
-        }
-        else {
-                yf_int_t unempty_inedex = 1;
-                for (; unempty_inedex < 3; ++unempty_inedex)
-                {
-                        list = tm_evt_driver->far_tm_lists 
-                                        + yf_far_timer_inc(tm_evt_driver, unempty_inedex);
-                        if (!yf_list_empty(list))
-                                break;
-                }
-
-                //max check time=3*_YF_FAR_TIMER_PRCS_MS=0.768s
-                tm_evt_driver->nearest_timeout_ms 
-                                = unempty_inedex << _YF_FAR_TIMER_PRCS_MS_BIT;
-
-                yf_log_debug1(YF_LOG_DEBUG, tm_evt_driver->log, 0, 
-                                "no near evts, unempty_index=%d so nearest_timeout_ms=%d", 
-                                unempty_inedex, 
-                                tm_evt_driver->nearest_timeout_ms);
-        }
+        yf_update_nearest_tm_ms(tm_evt_driver);
 
         /*
         * check too far timer(half far time dist)

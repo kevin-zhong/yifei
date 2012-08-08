@@ -110,6 +110,10 @@ void  on_fd_evt(yf_fd_event_t* evt)
         ASSERT_EQ(ret, YF_OK);
 }
 
+void  on_default_evt(yf_fd_event_t* evt)
+{
+}
+
 
 void  start_tm_test(void *data, yf_log_t *log)
 {
@@ -127,6 +131,16 @@ void  start_tm_test(void *data, yf_log_t *log)
 
                 yf_time_t  time_out = {::random() % 120,  ::random() % 1000};
                 ret = yf_register_fd_evt(_read_evt, &time_out);
+                ASSERT_EQ(ret, YF_OK);
+        }
+        else {
+                yf_fd_t  tmp_channel[2];
+                socketpair(AF_LOCAL, SOCK_STREAM, 0, tmp_channel);
+                yf_int_t ret = yf_alloc_fd_evt(_evt_driver, tmp_channel[0], 
+                                &_read_evt, &write_evt, log);
+                ASSERT_EQ(ret, YF_OK);
+                _read_evt->fd_evt_handler = on_default_evt;
+                ret = yf_register_fd_evt(_read_evt, NULL);
                 ASSERT_EQ(ret, YF_OK);
         }
         

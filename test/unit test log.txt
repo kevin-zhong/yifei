@@ -1,3 +1,5 @@
+perl -i -p -e "s/\d+:\d+:\d+//g"
+
 [==========] Running 1 test from 1 test case.
 [----------] Global test environment set-up.
 [----------] 1 test from ProcTestor
@@ -7,45 +9,85 @@ child process_4, pid=16841
 child process_5, pid=16842
 child process_6, pid=16843
 child process_6 end, pid=16843
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:81][alert][16836#3959637088]: empty_child_proc 16839 exited on signal 11
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16843 exited with code 0
-2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 1
+2012/08/03  402 [./ppc/yf_signal.c:81][alert][16836#3959637088]: empty_child_proc 16839 exited on signal 11
+2012/08/03  402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16843 exited with code 0
+2012/08/03  402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 1
 child process_4 end, pid=16841
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16841 exited with code 0
-2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 2
+2012/08/03  402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16841 exited with code 0
+2012/08/03  402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 2
 child process_5 end, pid=16842
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16842 exited with code 0
-2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 3
+2012/08/03  402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16842 exited with code 0
+2012/08/03  402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 3
 child process_3 end, pid=16840
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16840 exited with code 0
-2012/08/03 12:01:03 402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 4
+2012/08/03  402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: child_process 16840 exited with code 0
+2012/08/03  402 [yf_proc_testor.cpp:270][debug][16836#3959637088]: exit child process = 4
 last cnt=1584032
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 1) failed (3: No such process)
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 28) failed (3: No such process)
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 3) failed (3: No such process)
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: test_channel_func 16837 exited with code 0
-2012/08/03 12:01:03 402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 1
-2012/08/03 12:01:03 402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: test_channel_func 16838 exited with code 0
-2012/08/03 12:01:03 402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 2
+2012/08/03  402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 1) failed (3: No such process)
+2012/08/03  402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 28) failed (3: No such process)
+2012/08/03  402 [./ppc/yf_signal.c:124][alert][16836#3959637088]: kill(16839, 3) failed (3: No such process)
+2012/08/03  402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: test_channel_func 16837 exited with code 0
+2012/08/03  402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 1
+2012/08/03  402 [./ppc/yf_signal.c:91][notice][16836#3959637088]: test_channel_func 16838 exited with code 0
+2012/08/03  402 [yf_proc_testor.cpp:320][debug][16836#3959637088]: exit child process = 2
 
 
 忘了设置 tm evt，导致一个子command退出后，timer还是保留下来了，但是也没造成什么大的问题，留下了一个警告而已；
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=5, near evt num=6, addr=000000001D3B9990
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: cat execute timeout
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3B9E50) 
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=4, near evt num=5, addr=000000001D3B99E0
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: ./exe_ctx/echo.py execute timeout
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3B9F10) 
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=3, near evt num=4, addr=000000001D3B9A30
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: sleep execute timeout
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_fd_event_in.c:149][error][7153#3777741920]: fd=10 not in use, evts_capcity=128
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:129][debug][7153#3777741920]: destory detach process, kill (7157, 9) success
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=2, near evt num=3, addr=000000001D3B9A80
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: uname execute timeout
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA090) 
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=1, near evt num=2, addr=000000001D3B9AD0
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: sleep execute timeout
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA150) 
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=0, near evt num=1, addr=000000001D3B9B20
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: ./exe_ctx/test_unexsit execute timeout
-12/08/07 16:17:41 017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA210) 
+12/08/07  017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=5, near evt num=6, addr=000000001D3B9990
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: cat execute timeout
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3B9E50) 
+12/08/07  017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=4, near evt num=5, addr=000000001D3B99E0
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: ./exe_ctx/echo.py execute timeout
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3B9F10) 
+12/08/07  017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=3, near evt num=4, addr=000000001D3B9A30
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: sleep execute timeout
+12/08/07  017 [./mio_driver/event_in/yf_fd_event_in.c:149][error][7153#3777741920]: fd=10 not in use, evts_capcity=128
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:129][debug][7153#3777741920]: destory detach process, kill (7157, 9) success
+12/08/07  017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=2, near evt num=3, addr=000000001D3B9A80
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: uname execute timeout
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA090) 
+12/08/07  017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=1, near evt num=2, addr=000000001D3B9AD0
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: sleep execute timeout
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA150) 
+12/08/07  017 [./mio_driver/event_in/yf_tm_event_in.c:213][debug][7153#3777741920]: single timer out, stm evt num=0, near evt num=1, addr=000000001D3B9B20
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:335][warn][7153#3777741920]: ./exe_ctx/test_unexsit execute timeout
+12/08/07  017 [./mio_driver/event_in/yf_processor_event_in.c:114][warn][7153#3777741920]: yf_proc no proc (000000001D3BA210) 
+
+
+epoll 和其他多路复用（select，poll）驱动函数相比有很多奇特的地方：
+1，如果监控 fd 为空，会报错（invalid args）
+2，后来为了避开上面这个问题（有时候是没有fd，比如只想测试 timers）尝试将 stdout 的读加入进去，
+		竟然报错了（不准干啊!!应该是 epoll 判断了只有socket类型的句柄才能加入，其他如终端的fd是被禁止的）
+12/08/08  904 [./mio_driver/event_in/yf_fd_event_in.c:132][debug][19333#2206712896]: alloc fd evt, fd=1
+12/08/08  904 [./mio_driver/fd_poller/yf_epoll.c:140][debug][19333#2206712896]: epoll add event: fd:1 ev:1, other polled=0
+12/08/08  904 [./mio_driver/fd_poller/yf_epoll.c:158][error][19333#2206712896]: epoll ctl fd failed, fd=1 (1: Operation not permitted)
+12/08/08  904 [./mio_driver/event_in/yf_fd_event_in.c:206][error][19333#2206712896]: fd=1, evt=read_evt activate poll failed
+yf_driver_testor.cpp:142: Failure
+
+只能用 socketpair 创建了一对channel，然后将其中一个加入了读事件监控；
+
+
+
+epoll 的超时（其实是所有的系统定时机制）都是不精确，以及不可预测的
+1，精度是有限的，比如有的系统只能精确到 10ms；我测试用的系统基本可以精确到2ms以内
+2，不可预测性非常大，比如epoll超时为 104ms，但实际上过了 481*4=1924ms 才退出
+		这应该和系统的调度相关的，系统的调度导致有时候一个进程过1，2s才能被再次放入cpu调度；
+		所以出现这种1-2s的误差是没法避免的；
+3，但可以确定的是，像2这种误差只会出现延迟，而不会提前1-2s到来，即可以保证定时器最后耗的时间只会比预期的长，不会短；
+4，从上面这条可以看出，误差在1-3s估计是很难避免的，所以如果请求回包的超时设置为3-4s感觉没太大意义；
+		
+12/08/08  403 [./mio_driver/fd_poller/yf_epoll.c:183][debug][19639#1361224768]: epoll timer: 104
+12/08/08  403 [./mio_driver/fd_poller/yf_epoll.c:191][debug][19639#1361224768]: epoll ready 0 of 1
+12/08/08  403 [./mio_driver/fd_poller/yf_epoll.c:210][debug][19639#1361224768]: epoll() returned no events with timeout
+12/08/08  331 [./mio_driver/event_in/yf_tm_event_in.c:363][debug][19639#1361224768]: prev near tm index=22, poll timer after
+ periods=481, tm period cnt=31833
+12/08/08  331 [./mio_driver/event_in/yf_tm_event_in.c:386][debug][19639#1361224768]: [0][0]=2181038080
+12/08/08  331 [./mio_driver/event_in/yf_tm_event_in.c:267][debug][19639#1361224768]: near tm roll index=22, check index_it=4
+7
+12/08/08  331 [./mio_driver/event_in/yf_tm_event_in.c:221][debug][19639#1361224768]: single timer out, stm evt num=2275, nea
+r evt num=4, addr=00002B295139E100
+12/08/08  331 [yf_driver_testor.cpp:53][debug][19639#1361224768]: real=127336 vs target=125512, big lacy diff=1824
+12/08/08  331 [./mio_driver/event_in/yf_tm_event_in.c:267][debug][19639#1361224768]: near tm roll index=22, check index_it=5
+3
+12/08/08  331 [./mio_driver/event_in/yf_tm_event_in.c:221][debug][19639#1361224768]: single timer out, stm evt num=2274, nea
+r evt num=3, addr=00002B29513BCD80
+12/08/08  331 [yf_driver_testor.cpp:53][debug][19639#1361224768]: real=127336 vs target=125536, big lacy diff=1800

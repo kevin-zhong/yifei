@@ -44,6 +44,8 @@ try_other_poll:
 
         fd_evt_driver->evt_poll->ctx = fd_evt_driver;
         fd_evt_driver->evt_poll->poll_cls = yf_fd_poller_cls + try_poll_type;
+        fd_evt_driver->evt_poll->log = log;
+        
         yf_log_debug1(YF_LOG_DEBUG, log, 0, "poll init sucess, type=%s", 
                         yf_fd_poller_cls[try_poll_type].name);
         return  YF_OK;

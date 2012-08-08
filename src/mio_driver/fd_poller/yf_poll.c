@@ -243,8 +243,8 @@ static yf_int_t yf_poll_dispatch(yf_fd_poll_t *poller)
 
         if (ready == 0)
         {
-                yf_log_error(YF_LOG_ALERT, poller->log, 0,
-                             "poll() returned no events without timeout");
+                yf_log_debug0(YF_LOG_DEBUG, poller->log, 0,
+                             "poll() returned no events with timeout");
                 return YF_ERROR;
         }
 

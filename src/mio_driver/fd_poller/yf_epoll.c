@@ -206,8 +206,8 @@ static yf_int_t yf_epoll_dispatch(yf_fd_poll_t *epoller)
 
         if (ready == 0)
         {
-                yf_log_error(YF_LOG_ALERT, epoller->log, 0,
-                             "epoll() returned no events without timeout");
+                yf_log_debug0(YF_LOG_DEBUG, epoller->log, 0,
+                             "epoll() returned no events with timeout");
                 return YF_ERROR;
         }
 

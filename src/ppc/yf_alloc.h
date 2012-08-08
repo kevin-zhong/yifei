@@ -28,6 +28,4 @@ void *yf_memalign(size_t alignment, size_t size, yf_log_t *log);
 #define yf_memalign(alignment, size, yf_log_t *log)  yf_alloc(size)
 #endif
 
-yf_int_t yf_init_processs(yf_log_t *log);
-
 #endif
