@@ -3,13 +3,13 @@
 
 #if YF_HAVE_ATOMIC_CMP_SWP
 
-void yf_lock(yf_lock_t *lock)
+void _yf_lock_in(yf_lock_t* lock, yf_atomic_t v)
 {
         yf_uint_t i, n;
 
         for (;;)
         {
-                if (yf_trylock(lock))
+                if (yf_trylock_v(lock, v))
                 {
                         return;
                 }
@@ -23,7 +23,7 @@ void yf_lock(yf_lock_t *lock)
                                         yf_cpu_pause();
                                 }
 
-                                if (yf_trylock(lock))
+                                if (yf_trylock_v(lock, v))
                                 {
                                         return;
                                 }

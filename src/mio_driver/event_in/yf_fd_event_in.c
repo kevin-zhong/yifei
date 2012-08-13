@@ -76,7 +76,10 @@ void  yf_destory_fd_driver(yf_fd_evt_driver_in_t *fd_driver)
 yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t*  driver, yf_fd_t fd
                 , yf_fd_event_t** read, yf_fd_event_t** write, yf_log_t* log)
 {
-        yf_fd_evt_driver_in_t* fd_evt_driver = &((yf_evt_driver_in_t*)driver)->fd_driver;
+        yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        assert(yf_check_be_magic(evt_driver));
+        
+        yf_fd_evt_driver_in_t* fd_evt_driver = &evt_driver->fd_driver;
         if (log == NULL)
                 log = fd_evt_driver->evt_poll->log;
 

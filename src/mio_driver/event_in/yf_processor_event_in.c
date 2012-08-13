@@ -47,7 +47,10 @@ yf_int_t   yf_destory_proc_driver(yf_proc_evt_driver_in_t* proc_driver)
 yf_int_t  yf_alloc_proc_evt(yf_evt_driver_t* driver, yf_processor_event_t** proc_evt
                 , yf_log_t* log)
 {
-        yf_proc_evt_driver_in_t* proc_driver = &((yf_evt_driver_in_t*)driver)->proc_driver;
+        yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        assert(yf_check_be_magic(evt_driver));
+        
+        yf_proc_evt_driver_in_t* proc_driver = &evt_driver->proc_driver;
         
         yf_processor_event_in_t * evt_tmp;
         evt_tmp = yf_alloc(sizeof(yf_processor_event_in_t));

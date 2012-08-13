@@ -24,8 +24,14 @@ typedef  yf_atomic_t  yf_lock_t;
 #define  yf_lock_init(lock) (*(lock) = 0)
 #define  yf_lock_destory(lock)
 
-void yf_lock(yf_lock_t* lock);
-#define yf_trylock(lock)  (*(lock) == 0 && yf_atomic_cmp_swp(lock, 0, 1))
+void _yf_lock_in(yf_lock_t* lock, yf_atomic_t v);
+
+#define yf_lock_v(lock, v) _yf_lock_in(lock, v)
+#define yf_lock(lock) _yf_lock_in(lock, 1)
+
+#define yf_trylock_v(lock, v) (*(lock) == 0 && yf_atomic_cmp_swp(lock, 0, v))
+#define yf_trylock(lock)  yf_trylock_v(lock, 1)
+
 #define yf_unlock(lock)    (*(lock) = 0)
 
 #elif (YF_THREADS) && defined  HAVE_PTHREAD_H

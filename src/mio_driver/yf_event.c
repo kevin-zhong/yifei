@@ -15,6 +15,8 @@ yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init)
 
         yf_memzero(evt_driver, sizeof(yf_evt_driver_in_t));
 
+        yf_set_be_magic(evt_driver);
+        
         evt_driver->driver_ctx = *driver_init;
 
         if (yf_init_fd_driver(&evt_driver->fd_driver, driver_init->nfds, 
@@ -58,6 +60,7 @@ yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init)
 void yf_evt_driver_destory(yf_evt_driver_t* driver)
 {
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        assert(yf_check_be_magic(evt_driver));
 
         if (evt_driver->driver_ctx.destory_cb)
         {
@@ -85,12 +88,16 @@ void yf_evt_driver_destory(yf_evt_driver_t* driver)
 void yf_evt_driver_stop(yf_evt_driver_t* driver)
 {
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        assert(yf_check_be_magic(evt_driver));
+        
         evt_driver->exit = 1;
 }
 
 void yf_evt_driver_start(yf_evt_driver_t* driver)
 {
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        assert(yf_check_be_magic(evt_driver));
+        
         yf_log_t* log = evt_driver->driver_ctx.log;
         evt_driver->exit = 0;
 

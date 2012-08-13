@@ -4,7 +4,7 @@
 #include <base_struct/yf_core.h>
 #include <ppc/yf_header.h>
 
-#define yf_evt_driver_t int
+#define yf_evt_driver_t yf_u64_t
 
 typedef  struct  yf_tm_evt_s
 {

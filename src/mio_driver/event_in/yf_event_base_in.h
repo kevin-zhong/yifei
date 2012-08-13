@@ -29,6 +29,7 @@ typedef  struct  yf_proc_evt_driver_in_s  yf_proc_evt_driver_in_t;
 
 typedef  struct
 {
+        yf_u32_t  begin_flag;
         yf_int_t  exit;
 
         yf_evt_driver_init_t  driver_ctx;
@@ -44,9 +45,10 @@ typedef  struct
         yf_int_t  fd_driver_inited:1;
         yf_int_t  sig_driver_inited:1;
         yf_int_t  proc_driver_inited:1;
+        yf_u32_t  end_flag;
+        
 }
 yf_evt_driver_in_t;
-
 
 #endif
 

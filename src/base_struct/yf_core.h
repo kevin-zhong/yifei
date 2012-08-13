@@ -9,6 +9,18 @@
 #define  YF_DECLINED   -5
 #define  YF_ABORT      -6
 
+#define YF_MAGIC_VAL 0x5897A7CB
+
+#define yf_set_magic(v) ((v) = YF_MAGIC_VAL)
+#define yf_check_magic(v) ((v) == YF_MAGIC_VAL)
+
+#define yf_set_be_magic(tar) \
+        yf_set_magic((tar)->begin_flag); \
+        yf_set_magic((tar)->end_flag);
+
+#define yf_check_be_magic(tar) (yf_check_magic((tar)->begin_flag) \
+        && yf_check_magic((tar)->end_flag))
+
 typedef struct yf_pool_s        yf_pool_t;
 typedef struct yf_chain_s       yf_chain_t;
 typedef struct yf_log_s         yf_log_t;
