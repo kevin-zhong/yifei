@@ -11,36 +11,83 @@
 
 #include "yf_bridge_task.h"
 
+typedef struct yf_task_cb_info_s
+{
+        void* data;
+}
+yf_task_cb_info_t;
+
+#define  YF_ANY_CHILD_NO 0xfffe
+
+
 typedef struct yf_bridge_in_s
 {
+        yf_u32_t  begin_flag;
+        
         yf_bridge_cxt_t  ctx;
+        yf_node_pool_t  task_cb_info_pool;
 
         void* bridge_data;
 
-        yf_int_t (*send_task)(yf_bridge_t* bridge
-                , void* task, size_t len, yf_u32_t hash
-                , void* data, yf_log_t* log);
+        char* task_res_buf;
+        char* task_buf[YF_BRIDGE_MAX_CHILD_NUM];
+
+        //all can call
+        yf_int_t (*lock_tq)(struct yf_bridge_in_s* bridge
+                        , yf_task_queue_t** tq, yf_int_t* child_no, yf_log_t* log);
+        void (*unlock_tq)(struct yf_bridge_in_s* bridge
+                        , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);
+
+        yf_int_t (*lock_res_tq)(struct yf_bridge_in_s* bridge
+                        , yf_task_queue_t** tq, yf_int_t child_no, yf_log_t* log);
+        void (*unlock_res_tq)(struct yf_bridge_in_s* bridge
+                        , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);        
+
         /*
-        * will copy content from bridge to the mem that first ptr pointing
-        * if task_len != NULL, then will be the input buf size, if input buf size
-        * small than taskuired, then will return YF_ERROR; after call, the res
-        * len is returned with task_len..
-        * else if task_len == NULL, then will asume that buf is big enough, and
-        * the res len is known to the caller...
-        * after get, will delete the task.. from bridge
+        * parent call
         */
-        yf_int_t (*get_task)(yf_bridge_t* bridge
-                , void* task, size_t* len, yf_log_t* log);
+        yf_task_res_handle task_res_handler;
 
-        //child's api
-        yf_int_t (*send_task_res)(yf_bridge_t* bridge
-                , void* task_res, size_t len, yf_log_t* log);
-
-        yf_int_t (*get_task_res)(yf_bridge_t* bridge
-                , void* task_res, size_t* len, yf_log_t* log);
+        //yes, task_signal ret void, cause if fail, child may exit...
+        void (*task_signal)(struct yf_bridge_in_s* bridge
+                        , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);
         
+
+        yf_int_t (*attach_res_bridge)(struct yf_bridge_in_s* bridge
+                        , yf_evt_driver_t* evt_driver, yf_log_t* log);
+
+        void (*wait_task_res)(struct yf_bridge_in_s* bridge
+                        , yf_int_t* child_no, yf_log_t* log);
+
+        /*
+        * child call
+        */
+        yf_task_handle task_handler;
+
+        yf_int_t (*child_no)(yf_log_t* log);
+
+        void (*task_res_signal)(struct yf_bridge_in_s* bridge
+                        , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);
+
+        yf_int_t (*attach_bridge)(struct yf_bridge_in_s* bridge
+                        , yf_evt_driver_t* evt_driver, yf_int_t child_no, yf_log_t* log);
+        
+        void (*wait_task)(struct yf_bridge_in_s* bridge
+                        , yf_int_t child_no, yf_log_t* log);
+
+        yf_u32_t  end_flag;
 }
 yf_bridge_in_t;
+
+
+yf_int_t yf_send_task_res_in(yf_bridge_in_t* bridge_in
+                , void* task_res, size_t len, task_info_t* task_info, yf_log_t* log);
+
+void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
+                , yf_int_t child_no, yf_log_t* log);
+
+void  yf_bridge_on_task_res_valiable(yf_bridge_in_t* bridge_in
+                , yf_int_t child_no, yf_log_t* log);
 
 
 #endif

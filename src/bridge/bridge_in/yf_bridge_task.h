@@ -9,10 +9,12 @@
 
 typedef struct task_info_s
 {
-        yf_u32_t  id;
-        yf_u16_t  timeout_secs;
-        yf_u16_t  timeout:1;
-        yf_u16_t  error:1;
+        yf_u64_t  id;
+        yf_time_t  inqueue_time;
+        yf_int_t   status;
+        yf_u32_t  timeout_ms:20;
+        yf_u32_t  timeout:1;
+        yf_u32_t  error:1;
 }
 task_info_t;
 

@@ -26,6 +26,7 @@ typedef struct yf_chain_s       yf_chain_t;
 typedef struct yf_log_s         yf_log_t;
 typedef struct yf_array_s       yf_array_t;
 typedef struct yf_str_s           yf_str_t;
+typedef struct yf_node_pool_s  yf_node_pool_t;
 
 #include "yf_string.h"
 #include "yf_mem_pool.h"
@@ -34,6 +35,7 @@ typedef struct yf_str_s           yf_str_t;
 #include "yf_list.h"
 #include "yf_hash.h"
 #include "yf_rbtree.h"
+#include "yf_node_pool.h"
 #include "yf_bit_op.h"
 #include "yf_log.h"
 

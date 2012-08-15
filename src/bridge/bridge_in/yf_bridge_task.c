@@ -70,7 +70,8 @@ yf_int_t  yf_task_push(yf_task_queue_t* queue, task_info_t* task_info
         write_off = queue->write_offset;
         
         yf_tq_buf_add(queue, &write_off, &task_head, sizeof(yf_task_head_t), log);
-        yf_tq_buf_add(queue, &write_off, task, task_len, log);
+        if (task_len)
+                yf_tq_buf_add(queue, &write_off, task, task_len, log);
 
         queue->write_offset = write_off;
 
@@ -99,9 +100,11 @@ yf_int_t  yf_task_pop(yf_task_queue_t* queue, task_info_t* task_info
                                 *task_len, task_head.task_len);
                 return YF_ERROR;
         }
-        
-        CHECK_OK(yf_tq_buf_get(queue, &read_off, 
+
+        if (task_head.task_len) {
+                CHECK_OK(yf_tq_buf_get(queue, &read_off, 
                         task, task_head.task_len, log));
+        }
         
         queue->read_offset = read_off;
 

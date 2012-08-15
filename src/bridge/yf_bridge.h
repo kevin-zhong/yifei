@@ -16,21 +16,31 @@
 #define YF_BRIDGE_INS_THREAD 2
 
 #define YF_TASK_DISTPATCH_HASH_MOD 1
-#define YF_TASK_DISTPATCH_HASH_AREA 2
-#define YF_TASK_DISTPATCH_IDLE 3
+#define YF_TASK_DISTPATCH_IDLE 2
 
 #define YF_TASK_SUCESS 0
 #define YF_TASK_TIMEOUT 1
 #define YF_TASK_ERROR 2
 
+#define YF_BRIDGE_MAX_CHILD_NUM 32
+
 typedef  yf_u64_t yf_bridge_t;
 
+/*
+* will copy content from bridge to the mem that first ptr pointing
+* if task_len != NULL, then will be the input buf size, if input buf size
+* small than taskuired, then will return YF_ERROR; after call, the res
+* len is returned with task_len..
+* else if task_len == NULL, then will asume that buf is big enough, and
+* the res len is known to the caller...
+* after get, will delete the task.. from bridge
+*/
 typedef void (*yf_task_handle)(yf_bridge_t* bridge
-                , void* task, size_t* len, yf_u32_t id);
+                , void* task, size_t* len, yf_u64_t id, yf_log_t* log);
 
 typedef void (*yf_task_res_handle)(yf_bridge_t* bridge
-                , void* task_res, size_t* len, yf_u32_t id
-                , yf_int_t status, void* data);
+                , void* task_res, size_t* len, yf_u64_t id
+                , yf_int_t status, void* data, yf_log_t* log);
 
 typedef struct yf_bridge_cxt_s
 {
@@ -41,8 +51,12 @@ typedef struct yf_bridge_cxt_s
         yf_uint_t  task_dispatch_type:3;
 
         void* exec_func;
-        yf_uint_t child_num;
         
+        //max = YF_BRIDGE_MAX_CHILD_NUM
+        yf_uint_t child_num;
+
+        size_t max_task_size;
+        size_t max_task_num;
         size_t queue_capacity;
         
         yf_log_t* log;
@@ -58,19 +72,20 @@ yf_uint_t  yf_bridge_task_num(yf_bridge_t* bridge);
 */
 //if dispatch_func == NULL, then the idle child will deal the task, else
 //the dispated target child will deal the task
-yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t bridge_ctx
-                , yf_evt_driver_t* evt_driver, yf_task_res_handle task_res_handler);
+yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx
+                , yf_evt_driver_t* evt_driver, yf_task_res_handle handler, yf_log_t* log);
 
 //will destory childs and destory bridge...
-yf_int_t  yf_bridge_destory(yf_bridge_t* bridge);
+yf_int_t  yf_bridge_destory(yf_bridge_t* bridge, yf_log_t* log);
 
 //will return taskid>0 if success, else ret -1
-yf_u32_t yf_send_task(yf_bridge_t* bridge
+//if timeout_ms = 0, then will wait forever...
+yf_u64_t yf_send_task(yf_bridge_t* bridge
                 , void* task, size_t len, yf_u32_t hash
-                , void* data, yf_log_t* log);
+                , void* data, yf_u32_t timeout_ms, yf_log_t* log);
 
 //if in block type, call this will block, else will ret quickly with no effects
-void yf_poll_task_res(yf_bridge_t* bridge);
+void yf_poll_task_res(yf_bridge_t* bridge, yf_log_t* log);
 
 
 /*
@@ -79,14 +94,14 @@ void yf_poll_task_res(yf_bridge_t* bridge);
 //child call this after born and init
 //if in block type, set evt_driver=NULL
 yf_int_t yf_attach_bridge(yf_bridge_t* bridge
-                , yf_evt_driver_t* evt_driver, yf_task_handle task_handler);
+                , yf_evt_driver_t* evt_driver, yf_task_handle handler, yf_log_t* log);
 
 //if in block type, call this will block, else will ret quickly with no effects
-void yf_poll_task(yf_bridge_t* bridge);
+void yf_poll_task(yf_bridge_t* bridge, yf_log_t* log);
 
-//if task_res==NULLL or len==0, then no res body
+//if len==0, then no res body
 yf_int_t yf_send_task_res(yf_bridge_t* bridge
-                , void* task_res, size_t len, yf_u32_t id
+                , void* task_res, size_t len, yf_u64_t id
                 , yf_int_t status, yf_log_t* log);
 
 
