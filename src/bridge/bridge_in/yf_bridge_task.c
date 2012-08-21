@@ -40,7 +40,7 @@ yf_task_queue_t*  yf_init_task_queue(char* buf, size_t size, yf_log_t* log)
         }
 
         yf_memzero(buf, yf_tq_head_len);
-        yf_set_magic(queue->capacity);
+        yf_set_magic(queue->magic);
         queue->capacity = size - yf_tq_head_len;
         
         return queue;
@@ -57,10 +57,10 @@ yf_int_t  yf_task_push(yf_task_queue_t* queue, task_info_t* task_info
         size_t write_off;
 
         //note, must > , then can push sucess...
-        if (free_cap <= task_len)
+        if (free_cap <= require_len)
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "tq free_cap=%d, require_len=%d, push fail", 
-                                free_cap, task_len);
+                                free_cap, require_len);
                 return  YF_ERROR;
         }
 
@@ -69,14 +69,17 @@ yf_int_t  yf_task_push(yf_task_queue_t* queue, task_info_t* task_info
 
         write_off = queue->write_offset;
         
-        yf_tq_buf_add(queue, &write_off, &task_head, sizeof(yf_task_head_t), log);
+        yf_tq_buf_add(queue, &write_off, (char*)&task_head, sizeof(yf_task_head_t), log);
         if (task_len)
                 yf_tq_buf_add(queue, &write_off, task, task_len, log);
 
         queue->write_offset = write_off;
 
-        yf_log_debug3(YF_LOG_DEBUG, log, 0, "tq cap=%d, after task push, r=%d, w=%d", 
-                        queue->capacity, queue->read_offset, queue->write_offset);
+        yf_log_debug4(YF_LOG_DEBUG, log, 0, 
+                        "tq cap=%d, free=%d, after task push, r=%d, w=%d, tlen=%d", 
+                        queue->capacity, yf_tq_free_capacity(queue), 
+                        queue->read_offset, queue->write_offset, 
+                        task_len);
         
         return YF_OK;
 }
@@ -91,7 +94,7 @@ yf_int_t  yf_task_pop(yf_task_queue_t* queue, task_info_t* task_info
         size_t read_off = queue->read_offset;
         
         CHECK_OK(yf_tq_buf_get(queue, &read_off, 
-                        &task_head, sizeof(yf_task_head_t), log));
+                        (char*)&task_head, sizeof(yf_task_head_t), log));
         assert(yf_check_magic(task_head.magic));
 
         if (task_len && *task_len < task_head.task_len)
@@ -129,6 +132,9 @@ void yf_tq_buf_add(yf_task_queue_t* queue, size_t* write_off
 
         yf_memcpy(tq_buf + *write_off, buf, rest_len > 0 ? tail_cap : len);
         
+        /*yf_log_debug2(YF_LOG_DEBUG, log, 0, "write to %d len=%d", 
+                        *write_off, rest_len > 0 ? tail_cap : len);*/
+        
         if (rest_len < 0)
         {
                 *write_off += len;
@@ -137,6 +143,8 @@ void yf_tq_buf_add(yf_task_queue_t* queue, size_t* write_off
                 *write_off = 0;
         }
         else {
+                //yf_log_debug1(YF_LOG_DEBUG, log, 0, "write to 0 len=%d", rest_len);
+                
                 yf_memcpy(tq_buf, buf + tail_cap, rest_len);
                 *write_off = rest_len;
         }
@@ -163,6 +171,9 @@ yf_int_t yf_tq_buf_get(yf_task_queue_t* queue, size_t* read_off
 
         yf_memcpy(buf, tq_buf + *read_off, rest_len > 0 ? tail_cap : len);
         
+        /*yf_log_debug2(YF_LOG_DEBUG, log, 0, "read from %d len=%d", 
+                        *read_off, rest_len > 0 ? tail_cap : len);*/
+        
         if (rest_len < 0)
         {
                 *read_off += len;
@@ -171,6 +182,8 @@ yf_int_t yf_tq_buf_get(yf_task_queue_t* queue, size_t* read_off
                 *read_off = 0;
         }
         else {
+                //yf_log_debug1(YF_LOG_DEBUG, log, 0, "read from 0 len=%d", rest_len);
+                
                 yf_memcpy(buf + tail_cap, tq_buf, rest_len);
                 *read_off = rest_len;
         }

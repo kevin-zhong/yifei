@@ -21,6 +21,8 @@
 #define yf_check_be_magic(tar) (yf_check_magic((tar)->begin_flag) \
         && yf_check_magic((tar)->end_flag))
 
+typedef  struct  yf_slist_part  yf_slist_part_t;
+typedef  struct  yf_list_part  yf_list_part_t;
 typedef struct yf_pool_s        yf_pool_t;
 typedef struct yf_chain_s       yf_chain_t;
 typedef struct yf_log_s         yf_log_t;
@@ -33,9 +35,9 @@ typedef struct yf_node_pool_s  yf_node_pool_t;
 #include "yf_buf.h"
 #include "yf_array.h"
 #include "yf_list.h"
+#include "yf_node_pool.h"
 #include "yf_hash.h"
 #include "yf_rbtree.h"
-#include "yf_node_pool.h"
 #include "yf_bit_op.h"
 #include "yf_log.h"
 
@@ -65,4 +67,4 @@ typedef struct yf_node_pool_s  yf_node_pool_t;
 #define CHECK_OK(line) {yf_int_t __ret = (line); if (__ret != YF_OK) return __ret;}
 
 #endif
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            /* _YF_CORE_H_INCLUDED_ */
+/* _YF_CORE_H_INCLUDED_ */

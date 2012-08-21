@@ -12,6 +12,11 @@ libyifei_a_SOURCES=./net/yf_net_imp.c \
 ./mio_driver/event_in/yf_sig_event_in.c \
 ./mio_driver/event_in/yf_processor_event_in.c \
 ./mio_driver/yf_send_recv.c \
+./bridge/bridge_in/yf_bridge_in.c \
+./bridge/bridge_in/yf_bridge_task.c \
+./bridge/bridge_in/yf_bridge_signal.c \
+./bridge/bridge_in/yf_bridge_proc.c \
+./bridge/bridge_in/yf_bridge_thr.c \
 ./base_struct/yf_bit_op.c \
 ./base_struct/yf_rbtree.c \
 ./base_struct/yf_buf.c \
@@ -20,6 +25,7 @@ libyifei_a_SOURCES=./net/yf_net_imp.c \
 ./base_struct/yf_string.c \
 ./base_struct/yf_log.c \
 ./base_struct/yf_array.c \
+./base_struct/yf_node_pool.c \
 ./ppc/yf_time.c \
 ./ppc/yf_cpuinfo.c \
 ./ppc/yf_process.c \

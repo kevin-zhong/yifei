@@ -42,8 +42,11 @@ yf_int_t  yf_task_push(yf_task_queue_t* queue, task_info_t* task_info
 yf_int_t  yf_task_pop(yf_task_queue_t* queue, task_info_t* task_info
                 , char* task, size_t* task_len, yf_log_t* log);
 
-#define yf_tq_free_capacity(tq) (((tq)->read_offset + (tq)->capacity - (tq)->write_offset) \
-                % (tq)->capacity)
+//if ro == wo, all free
+#define yf_tq_free_capacity(tq) ((tq)->read_offset == (tq)->write_offset ? (tq)->capacity \
+                : ((tq)->read_offset + (tq)->capacity - (tq)->write_offset) \
+                        % (tq)->capacity)
+//if ro == wo, empty
 #define yf_tq_buf_size(tq) (((tq)->write_offset + (tq)->capacity - (tq)->read_offset) \
                 % (tq)->capacity)
 

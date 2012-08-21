@@ -9,7 +9,7 @@ static pthread_attr_t thr_attr;
 
 
 yf_err_t
-yf_create_thread(yf_tid_t *tid, yf_thread_value_t (*func)(void *arg), void *arg, yf_log_t *log)
+yf_create_thread(yf_tid_t *tid, yf_thread_exe_pt func, void *arg, yf_log_t *log)
 {
         int err;
 

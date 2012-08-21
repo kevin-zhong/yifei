@@ -70,9 +70,11 @@ yf_thread_t;
 #define YF_THREAD_EXIT   3
 #define YF_THREAD_DONE   4
 
+typedef yf_thread_value_t (*yf_thread_exe_pt)(void *arg);
+
 yf_int_t yf_init_threads(int n, size_t size, yf_log_t *log);
 yf_err_t yf_create_thread(yf_tid_t * tid,
-                          yf_thread_value_t (*func)(void *arg), void *arg, yf_log_t * log);
+                          yf_thread_exe_pt func, void *arg, yf_log_t * log);
 
 yf_mutex_t *yf_mutex_init(yf_log_t *log);
 void yf_mutex_destroy(yf_mutex_t *m, yf_log_t *log);

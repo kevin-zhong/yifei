@@ -1,5 +1,5 @@
-#ifndef _LIST_H
-#define _LIST_H
+#ifndef _YF_LIST_H
+#define _YF_LIST_H
 
 #include <base_struct/yf_core.h>
 #include <ppc/yf_header.h>
@@ -13,8 +13,6 @@ struct yf_slist_part
 {
         struct yf_slist_part *next;
 };
-
-typedef  struct  yf_slist_part  yf_slist_part_t;
 
 #define YF_EMPTY_SLIST_INIT(name) { NULL }
 #define yf_init_slist_head(part) ((part)->next = NULL)
@@ -50,8 +48,6 @@ struct yf_list_part
 {
         struct yf_list_part *next, *prev;
 };
-
-typedef  struct  yf_list_part  yf_list_part_t;
 
 #define YF_EMPTY_LIST_INIT(name) { &(name), &(name) }
 

@@ -15,6 +15,8 @@ static yf_int_t yf_check_near_timer_list(yf_tm_evt_driver_in_t* tm_evt_driver
 
 static yf_int_t yf_poll_timer(yf_tm_evt_driver_in_t* tm_evt_driver);
 
+static void  yf_timeout_caller(yf_tm_evt_driver_in_t* tm_evt_driver);
+
 
 #define yf_far_timer_inc(tm_evt_driver, i) yf_cicur_add( \
                         tm_evt_driver->far_tm_roll_index, \
@@ -35,6 +37,7 @@ yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_evt_driver
                 return YF_ERROR;
         }
 
+        yf_init_slist_head(&tm_evt_driver->timeout_list);
         yf_init_slist_head(&tm_evt_driver->free_list);
 
         for (i = (yf_s32_t)nstimers-1; i >= 0; --i)
@@ -193,50 +196,68 @@ yf_int_t   yf_del_timer(yf_tm_evt_driver_in_t* tm_evt_driver
 static void yf_timeout_handler(yf_tm_evt_driver_in_t* tm_evt_driver
                 , yf_timer_t* ptimer, yf_int_t is_nearest)
 {
-        if (yf_is_fd_evt(ptimer))
-        {
-                yf_fd_evt_link_t* fd_evt = container_of(ptimer, yf_fd_evt_link_t, timer);
-
-                tm_evt_driver->fdtm_evts_num--;
-
-                yf_log_debug3(YF_LOG_DEBUG, fd_evt->evt.log, 0, 
-                                "fd=%d[%V] timer out, fdtm evt num=%d", 
-                                fd_evt->evt.fd, &yf_evt_tn(&fd_evt->evt), 
-                                tm_evt_driver->fdtm_evts_num
-                                );
-
-                fd_evt->evt.timeout = 1;
-                fd_evt->evt.fd_evt_handler(&fd_evt->evt);                
-        }
-        else {
-                yf_tm_evt_link_t* tm_evt = container_of(ptimer, yf_tm_evt_link_t, timer);
-
-                tm_evt_driver->stm_evts_num--;
-
-                yf_log_debug3(YF_LOG_DEBUG, tm_evt->evt.log, 0, 
-                                "single timer out, stm evt num=%d, near evt num=%d, addr=%p", 
-                                tm_evt_driver->stm_evts_num, 
-                                tm_evt_driver->near_evts_num, 
-                                &tm_evt->timer
-                                );
-                
-                tm_evt->evt.timeout_handler(&tm_evt->evt, &tm_evt->timer.time_org_start);
-        }
-
+        //note, must -- first, last call biz call back func...
         if (is_nearest)
                 tm_evt_driver->near_evts_num--;
-        
-        ptimer->head = NULL;        
+        ptimer->head = NULL;
+
+        yf_slist_push(&ptimer->linker, &tm_evt_driver->timeout_list);
 }
+
+
+static void  yf_timeout_caller(yf_tm_evt_driver_in_t* tm_evt_driver)
+{
+        yf_slist_part_t* pos;
+        yf_timer_t* ptimer;
+
+        //TODO, still have exception, if callback cancel a timeout timer...
+        while (!yf_slist_empty(&tm_evt_driver->timeout_list))
+        {
+                pos = yf_slist_pop(&tm_evt_driver->timeout_list);
+                ptimer = yf_link_2_timer(pos);
+
+                if (yf_is_fd_evt(ptimer))
+                {
+                        yf_fd_evt_link_t* fd_evt = container_of(ptimer, yf_fd_evt_link_t, timer);
+
+                        tm_evt_driver->fdtm_evts_num--;
+
+                        yf_log_debug3(YF_LOG_DEBUG, fd_evt->evt.log, 0, 
+                                        "fd=%d[%V] timer out, fdtm evt num=%d", 
+                                        fd_evt->evt.fd, &yf_evt_tn(&fd_evt->evt), 
+                                        tm_evt_driver->fdtm_evts_num
+                                        );
+
+                        fd_evt->evt.timeout = 1;
+                        fd_evt->evt.fd_evt_handler(&fd_evt->evt);
+                }
+                else {
+                        yf_tm_evt_link_t* tm_evt = container_of(ptimer, yf_tm_evt_link_t, timer);
+
+                        tm_evt_driver->stm_evts_num--;
+
+                        yf_log_debug3(YF_LOG_DEBUG, tm_evt->evt.log, 0, 
+                                        "single timer out, stm evt num=%d, near evt num=%d, addr=%p", 
+                                        tm_evt_driver->stm_evts_num, 
+                                        tm_evt_driver->near_evts_num, 
+                                        &tm_evt->timer
+                                        );
+                        
+                        tm_evt->evt.timeout_handler(&tm_evt->evt, &tm_evt->timer.time_org_start);
+                }        
+        }
+}
+
 
 static void yf_list_timeout_handler(yf_tm_evt_driver_in_t* tm_evt_driver
                 , yf_list_part_t *list, yf_int_t is_nearest)
 {
         yf_list_part_t *pos, *keep;
+        yf_timer_t* ptimer;
 
         yf_list_for_each_safe(pos, keep, list)
         {
-                yf_timer_t* ptimer = yf_link_2_timer(pos);
+                ptimer = yf_link_2_timer(pos);
 
                 //note, must delete link first, sometimes, timeout handle will call tm calls
                 yf_list_del(pos);
@@ -467,6 +488,7 @@ update_near_flags:
         {
                 //will call this each near checker !!
                 yf_update_nearest_tm_ms(tm_evt_driver);
+                yf_timeout_caller(tm_evt_driver);
                 return YF_OK;
         }
 
@@ -587,7 +609,10 @@ update_near_flags:
         diff_periods = passed_periods - tm_evt_driver->too_far_tm_period_cnt;
         assert(diff_periods >= 0);
         if (diff_periods == 0)
+        {
+                yf_timeout_caller(tm_evt_driver);
                 return YF_OK;
+        }
 
         tm_evt_driver->too_far_tm_period_cnt = passed_periods;
 
@@ -637,7 +662,8 @@ update_near_flags:
 
         if (big_lacy)
                 yf_update_nearest_tm_ms(tm_evt_driver);
-        
+
+        yf_timeout_caller(tm_evt_driver);
         return YF_OK;
 }
 

@@ -9,11 +9,11 @@
 #include <ppc/yf_header.h>
 #include <mio_driver/yf_event.h>
 
+#define YF_BRIDGE_EVT_DRIVED 0
 #define YF_BRIDGE_BLOCKED 1
-#define YF_BRIDGE_EVT_DRIVED 2
 
-#define YF_BRIDGE_INS_PROC 1
-#define YF_BRIDGE_INS_THREAD 2
+#define YF_BRIDGE_INS_PROC 0
+#define YF_BRIDGE_INS_THREAD 1
 
 #define YF_TASK_DISTPATCH_HASH_MOD 1
 #define YF_TASK_DISTPATCH_IDLE 2
@@ -36,10 +36,10 @@ typedef  yf_u64_t yf_bridge_t;
 * after get, will delete the task.. from bridge
 */
 typedef void (*yf_task_handle)(yf_bridge_t* bridge
-                , void* task, size_t* len, yf_u64_t id, yf_log_t* log);
+                , void* task, size_t len, yf_u64_t id, yf_log_t* log);
 
 typedef void (*yf_task_res_handle)(yf_bridge_t* bridge
-                , void* task_res, size_t* len, yf_u64_t id
+                , void* task_res, size_t len, yf_u64_t id
                 , yf_int_t status, void* data, yf_log_t* log);
 
 typedef struct yf_bridge_cxt_s
@@ -55,6 +55,7 @@ typedef struct yf_bridge_cxt_s
         //max = YF_BRIDGE_MAX_CHILD_NUM
         yf_uint_t child_num;
 
+        //note, must > real max task size + 64byte
         size_t max_task_size;
         size_t max_task_num;
         size_t queue_capacity;
@@ -72,11 +73,13 @@ yf_uint_t  yf_bridge_task_num(yf_bridge_t* bridge);
 */
 //if dispatch_func == NULL, then the idle child will deal the task, else
 //the dispated target child will deal the task
-yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx
-                , yf_evt_driver_t* evt_driver, yf_task_res_handle handler, yf_log_t* log);
+yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx, yf_log_t* log);
 
 //will destory childs and destory bridge...
 yf_int_t  yf_bridge_destory(yf_bridge_t* bridge, yf_log_t* log);
+
+yf_int_t yf_attach_res_bridge(yf_bridge_t* bridge
+                , yf_evt_driver_t* evt_driver, yf_task_res_handle handler, yf_log_t* log);
 
 //will return taskid>0 if success, else ret -1
 //if timeout_ms = 0, then will wait forever...

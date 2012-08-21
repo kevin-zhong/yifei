@@ -277,13 +277,16 @@ static yf_int_t yf_epoll_dispatch(yf_fd_poll_t *epoller)
 
                 if (found)
                 {
-                        ready--;
+                        nready++;
                         continue;
                 }
         }
 
-        if (ready != 0)
-                yf_log_error(YF_LOG_ALERT, epoller->log, 0, "epoll ready != events");
+        if (ready != nready)
+        {
+                yf_log_error(YF_LOG_ALERT, epoller->log, 0,
+                              "epoll ready != events: %d:%d", ready, nready);
+        }
 
         return YF_OK;
 }

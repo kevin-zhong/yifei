@@ -27,7 +27,7 @@ void* yf_alloc_node_from_pool(yf_node_pool_t* node_pool, yf_log_t* log);
 
 void yf_free_node_to_pool(yf_node_pool_t* node_pool, void* node, yf_log_t* log);
 
-yf_u64_t  yf_get_node_id(yf_node_pool_t* node_pool, void* node, yf_log_t* log);
+yf_u64_t  yf_get_id_by_node(yf_node_pool_t* node_pool, void* node, yf_log_t* log);
 void* yf_get_node_by_id(yf_node_pool_t* node_pool, yf_u64_t id, yf_log_t* log);
 
 

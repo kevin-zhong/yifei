@@ -1,6 +1,74 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
+yf_int_t  yf_open_channel(yf_socket_t* fds, yf_int_t unblock1, yf_int_t unblock2
+                , yf_int_t close_on_exe, yf_log_t *log)
+{
+        unsigned long on;
+        
+        if (socketpair(AF_LOCAL, SOCK_STREAM, 0, fds) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "socketpair() failed");
+                return YF_ERROR;
+        }
+
+        yf_log_debug2(YF_LOG_DEBUG, log, 0,
+                      "channel %d:%d",
+                      fds[0], fds[1]);
+
+        if (unblock1 && yf_nonblocking(fds[0]) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             yf_nonblocking_n " failed");
+                yf_close_channel(fds, log);
+                return YF_ERROR;
+        }
+
+        if (unblock2 && yf_nonblocking(fds[1]) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             yf_nonblocking_n " failed");
+                yf_close_channel(fds, log);
+                return YF_ERROR;
+        }
+        
+        on = 1;
+        if (ioctl(fds[0], FIOASYNC, &on) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "ioctl(FIOASYNC) failed");
+                yf_close_channel(fds, log);
+                return YF_ERROR;
+        }
+
+        if (fcntl(fds[0], F_SETOWN, yf_pid) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "fcntl(F_SETOWN) failed");
+                yf_close_channel(fds, log);
+                return YF_ERROR;
+        }
+
+        if (close_on_exe && fcntl(fds[0], F_SETFD, FD_CLOEXEC) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "fcntl(FD_CLOEXEC) failed");
+                yf_close_channel(fds, log);
+                return YF_ERROR;
+        }
+
+        if (close_on_exe && fcntl(fds[1], F_SETFD, FD_CLOEXEC) == -1)
+        {
+                yf_log_error(YF_LOG_ALERT, log, yf_errno,
+                             "fcntl(FD_CLOEXEC) failed");
+                yf_close_channel(fds, log);
+                return YF_ERROR;
+        }
+        return  YF_OK;
+}
+
+
 yf_int_t
 yf_write_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
 {

@@ -197,7 +197,10 @@ void  yf_log_close(yf_log_t* yf_log)
         
         if (yf_log->file->fd == YF_INVALID_FILE
                 || yf_log->file->fd == yf_stderr)
+        {
+                yf_free(yf_log->file);
                 return;
+        }
 
         yf_close_file(yf_log->file->fd);
         yf_log->file->fd = YF_INVALID_FILE;

@@ -2,20 +2,59 @@
 #include <base_struct/yf_core.h>
 #include "yf_bridge_in.h"
 
+typedef  yf_int_t  (*yf_bridge_creator_ptr)(yf_bridge_in_t* bridge_in, yf_log_t* log);
+
+#define yf_bridge_creator_index(cx) (cx)->child_ins_type \
+                        + ((cx)->parent_ins_type << 1) \
+                        + ((cx)->child_poll_type << 2) \
+                        + ((cx)->parent_poll_type << 3)
+
+extern  yf_int_t  yf_bridge_pp_creator(yf_bridge_in_t* bridge_in, yf_log_t* log);
+extern  yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log);
+extern  yf_int_t  yf_bridge_bt_creator(yf_bridge_in_t* bridge_in, yf_log_t* log);
+
+static yf_bridge_creator_ptr yf_bridge_ci[16] = 
+{
+        yf_bridge_pp_creator, 
+        yf_bridge_et_creator, //0001(ep->et)
+        NULL, 
+        yf_bridge_et_creator, //0011(et->et)
+        yf_bridge_pp_creator, 
+        yf_bridge_bt_creator, //0101(ep->bt)
+        NULL, 
+        yf_bridge_bt_creator, //0111(et->bt)
+        
+        NULL, //8
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
+
+
 /*
 * ------parent's api------
 */
 //if dispatch_func == NULL, then the idle child will deal the task, else
 //the dispated target child will deal the task
-yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx
-                , yf_evt_driver_t* evt_driver, yf_task_res_handle handler, yf_log_t* log)
+yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx, yf_log_t* log)
 {
         yf_bridge_in_t* bridge_in;
+        yf_node_pool_t* node_pool;
+        yf_bridge_creator_ptr creator_pfc;
         
-        bridge_in->task_res_handler = handler;
+        size_t bridge_size = yf_align_mem(sizeof(yf_bridge_in_t));
+        size_t task_buf_size = yf_align_mem(bridge_ctx->max_task_size);
 
-        //last call this
+        size_t task_cb_size = yf_node_taken_size(sizeof(yf_task_cb_info_t));
+        
+        bridge_in = yf_alloc(bridge_size + task_buf_size 
+                        + bridge_ctx->max_task_num * task_cb_size);
+        
+        CHECK_RV(bridge_in == NULL, NULL);
+        
+        yf_memzero(bridge_in, sizeof(yf_bridge_in_t));
+        yf_set_be_magic(bridge_in);
+        
         bridge_in->ctx = *bridge_ctx;
+        bridge_ctx->queue_capacity = yf_align_mem(bridge_ctx->queue_capacity);
         
         if (bridge_ctx->max_task_size >= (bridge_ctx->queue_capacity>>2))
         {
@@ -28,7 +67,25 @@ yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx
                 bridge_ctx->max_task_size = bridge_ctx->queue_capacity>>2;
         }
         
-        bridge_in->task_res_buf = yf_alloc(bridge_ctx->max_task_size);
+        bridge_in->task_res_buf = (char*)bridge_in + bridge_size;
+
+        node_pool = &bridge_in->task_cb_info_pool;
+
+        node_pool->each_taken_size = task_cb_size;
+        node_pool->total_num = bridge_ctx->max_task_num;
+        node_pool->nodes_array = bridge_in->task_res_buf + task_buf_size;
+
+        yf_init_node_pool(node_pool, log);
+
+        creator_pfc = yf_bridge_ci[yf_bridge_creator_index(bridge_ctx)];
+        
+        if (creator_pfc == NULL)
+        {
+                yf_log_error(YF_LOG_WARN, log, 0, "not supported bridge type");
+                yf_free(bridge_in);
+                return NULL;
+        }
+        creator_pfc(bridge_in, log);
         
         return  (yf_bridge_t*)bridge_in;
 }
@@ -40,9 +97,21 @@ yf_int_t  yf_bridge_destory(yf_bridge_t* bridge, yf_log_t* log)
         yf_bridge_in_t* bridge_in = (yf_bridge_in_t*)bridge;
         assert(yf_check_be_magic(bridge_in));
 
-        yf_free(bridge_in->task_res_buf);
-        
+        bridge_in->destory(bridge_in, log);
+
+        yf_free(bridge_in);
         return YF_OK;
+}
+
+yf_int_t yf_attach_res_bridge(yf_bridge_t* bridge
+                , yf_evt_driver_t* evt_driver, yf_task_res_handle handler, yf_log_t* log)
+{
+        yf_bridge_in_t* bridge_in = (yf_bridge_in_t*)bridge;
+        assert(yf_check_be_magic(bridge_in));
+
+        bridge_in->task_res_handler = handler;
+        
+        return bridge_in->attach_res_bridge(bridge_in, evt_driver, log);
 }
 
 
@@ -115,8 +184,11 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         if (bridge_in->unlock_tq)
                 bridge_in->unlock_tq(bridge_in, tq, child_no, log);
 
-        yf_log_debug2(YF_LOG_DEBUG, log, 0, "task id=%lld send to child_%x success", 
-                        task_id, child_no);
+        bridge_in->task_execut[child_no] += 1;
+
+        yf_log_debug3(YF_LOG_DEBUG, log, 0, 
+                        "task id=%l send to child_%xd success, execute=%d", 
+                        task_id, child_no, bridge_in->task_execut[child_no]);
         return task_id;
 
 failed:
@@ -141,7 +213,7 @@ void yf_poll_task_res(yf_bridge_t* bridge, yf_log_t* log)
         if (child_no < 0)
                 return;
 
-        yf_log_debug1(YF_LOG_DEBUG, log, 0, "poll task res, child_%x ret res", child_no);
+        yf_log_debug1(YF_LOG_DEBUG, log, 0, "poll task res, child_%xd ret res", child_no);
         yf_bridge_on_task_res_valiable(bridge_in, child_no, log);
 }
 
@@ -157,13 +229,19 @@ yf_int_t yf_attach_bridge(yf_bridge_t* bridge
         yf_bridge_in_t* bridge_in = (yf_bridge_in_t*)bridge;
         assert(yf_check_be_magic(bridge_in));
 
-        yf_int_t  child_no = bridge_in->child_no(log);
+        yf_int_t  child_no = bridge_in->child_no(bridge_in, log);
 
         bridge_in->task_handler = handler;
+
+        if (bridge_in->ctx.child_ins_type == YF_BRIDGE_INS_PROC)
+                bridge_in->task_buf[child_no] = bridge_in->task_res_buf;
+        else
+                bridge_in->task_buf[child_no] = yf_alloc(bridge_in->ctx.max_task_size);
         
-        bridge_in->task_buf[child_no] = yf_alloc(bridge_in->ctx.max_task_size);
+        if (bridge_in->task_buf[child_no] == NULL)
+                return YF_ERROR;
         
-        return bridge_in->attach_bridge(bridge_in, child_no, log);
+        return bridge_in->attach_bridge(bridge_in, evt_driver, child_no, log);
 }
 
 
@@ -176,7 +254,7 @@ void yf_poll_task(yf_bridge_t* bridge, yf_log_t* log)
         if (bridge_in->wait_task == NULL)
                 return;
 
-        yf_int_t child_no = bridge_in->child_no(log);
+        yf_int_t child_no = bridge_in->child_no(bridge_in, log);
         
         bridge_in->wait_task(bridge_in, child_no, log);
         yf_bridge_on_task_valiable(bridge_in, child_no, log);
@@ -190,7 +268,7 @@ yf_int_t yf_send_task_res_in(yf_bridge_in_t* bridge_in
         yf_task_cb_info_t* task_cb;
         yf_int_t  ret;
         yf_task_queue_t* tq = NULL;
-        yf_int_t child_no = bridge_in->child_no(log);
+        yf_int_t child_no = bridge_in->child_no(bridge_in, log);
 
         ret = bridge_in->lock_res_tq(bridge_in, &tq, child_no, log);
         if (ret != YF_OK)
@@ -209,7 +287,7 @@ yf_int_t yf_send_task_res_in(yf_bridge_in_t* bridge_in
                 len = 0;
         }
 
-        ret = yf_task_push(tq, &task_info, task_res, len, log);
+        ret = yf_task_push(tq, task_info, task_res, len, log);
         
         if (ret == YF_OK && bridge_in->task_res_signal)
         {
@@ -221,11 +299,11 @@ yf_int_t yf_send_task_res_in(yf_bridge_in_t* bridge_in
 
         if (ret != YF_OK)
         {
-                yf_log_error(YF_LOG_WARN, log, 0, "task res id=%lld by child_%x send back failed", 
+                yf_log_error(YF_LOG_WARN, log, 0, "task res id=%l by child_%xd send back failed", 
                         task_info->id, child_no);
         }
         else {
-                yf_log_debug2(YF_LOG_DEBUG, log, 0, "task res id=%lld by child_%x send back success", 
+                yf_log_debug2(YF_LOG_DEBUG, log, 0, "task res id=%l by child_%xd send back success", 
                         task_info->id, child_no);
         }
 
@@ -278,7 +356,7 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
                 if (ret == YF_OK)
                 {
                         yf_log_debug2(YF_LOG_DEBUG, log, 0, 
-                                        "task id=%lld recevied by child_%x success", 
+                                        "task id=%l recevied by child_%xd success", 
                                         task_info.id, child_no);
 
                         diff_ms = yf_time_diff_ms(&yf_now_times.clock_time, 
@@ -287,7 +365,7 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
                         if (task_info.timeout_ms && diff_ms > task_info.timeout_ms)
                         {
                                 yf_log_error(YF_LOG_WARN, log, 0, 
-                                                "timeout task id=%lld recevied by child_%x, send timeout resp", 
+                                                "timeout task id=%l recevied by child_%xd, send timeout resp", 
                                                 task_info.id, child_no);
 
                                 task_info.timeout = 1;
@@ -349,7 +427,7 @@ void  yf_bridge_on_task_res_valiable(yf_bridge_in_t* bridge_in
                         if (task_cb == NULL)
                         {
                                 yf_log_error(YF_LOG_WARN, log, 0, 
-                                        "task id=%lld sent by child_%x cant found now", 
+                                        "task res id=%l sent by child_%xd cant found now", 
                                         task_info.id, child_no);
                                 continue;
                         }
@@ -361,6 +439,13 @@ void  yf_bridge_on_task_res_valiable(yf_bridge_in_t* bridge_in
                                 status = YF_TASK_TIMEOUT;
                         else if (task_info.error)
                                 status = YF_TASK_ERROR;
+
+                        bridge_in->task_execut[child_no] -= 1;
+                        
+                        yf_log_debug3(YF_LOG_DEBUG, log, 0, 
+                                        "task res id=%l sent by child_%xd ret, execute=%d", 
+                                        task_info.id, child_no, 
+                                        bridge_in->task_execut[child_no]);
                         
                         bridge_in->task_res_handler((yf_bridge_t*)bridge_in, 
                                         task_buf, task_len, task_info.id, 
@@ -378,5 +463,23 @@ void  yf_bridge_on_task_res_valiable(yf_bridge_in_t* bridge_in
                 }
                 return;
         }        
+}
+
+
+yf_int_t  yf_bridge_get_idle_tq(yf_bridge_in_t* bridge_in)
+{
+        yf_int_t i1 = 0;
+        yf_int_t tq_no = 0;
+        yf_uint_t tq_cnt = 0xfffffffe;
+
+        for ( i1 = 0; i1 < bridge_in->ctx.child_num; i1++ )
+        {
+                if (bridge_in->task_execut[i1] < tq_cnt)
+                {
+                        tq_cnt = bridge_in->task_execut[i1];
+                        tq_no = i1;
+                }
+        }
+        return  tq_no;
 }
 

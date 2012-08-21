@@ -31,6 +31,7 @@ typedef struct yf_bridge_in_s
 
         char* task_res_buf;
         char* task_buf[YF_BRIDGE_MAX_CHILD_NUM];
+        yf_uint_t  task_execut[YF_BRIDGE_MAX_CHILD_NUM];
 
         //all can call
         yf_int_t (*lock_tq)(struct yf_bridge_in_s* bridge
@@ -51,7 +52,6 @@ typedef struct yf_bridge_in_s
         //yes, task_signal ret void, cause if fail, child may exit...
         void (*task_signal)(struct yf_bridge_in_s* bridge
                         , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);
-        
 
         yf_int_t (*attach_res_bridge)(struct yf_bridge_in_s* bridge
                         , yf_evt_driver_t* evt_driver, yf_log_t* log);
@@ -59,12 +59,15 @@ typedef struct yf_bridge_in_s
         void (*wait_task_res)(struct yf_bridge_in_s* bridge
                         , yf_int_t* child_no, yf_log_t* log);
 
+        void (*destory)(struct yf_bridge_in_s* bridge, yf_log_t* log);
+
         /*
         * child call
         */
         yf_task_handle task_handler;
 
-        yf_int_t (*child_no)(yf_log_t* log);
+        yf_int_t (*child_no)(struct yf_bridge_in_s* bridge
+                        , yf_log_t* log);
 
         void (*task_res_signal)(struct yf_bridge_in_s* bridge
                         , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);
@@ -80,6 +83,9 @@ typedef struct yf_bridge_in_s
 yf_bridge_in_t;
 
 
+#define __yf_bridge_set_ac(brige, ac, prefix) (brige)->ac = prefix ## _ ## ac;
+
+
 yf_int_t yf_send_task_res_in(yf_bridge_in_t* bridge_in
                 , void* task_res, size_t len, task_info_t* task_info, yf_log_t* log);
 
@@ -88,6 +94,10 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
 
 void  yf_bridge_on_task_res_valiable(yf_bridge_in_t* bridge_in
                 , yf_int_t child_no, yf_log_t* log);
+
+yf_int_t  yf_bridge_get_idle_tq(yf_bridge_in_t* bridge_in);
+
+#include "yf_bridge_signal.h"
 
 
 #endif

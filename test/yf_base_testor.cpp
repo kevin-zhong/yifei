@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <list>
 
 extern "C" {
 #include <ppc/yf_header.h>
@@ -392,6 +393,102 @@ TEST_F(BaseTest, Hash)
 }
 
 
+/*
+* node pool
+*/
+TEST_F(BaseTest, NodePool)
+{
+        yf_node_pool_t  node_pool;
+        
+        node_pool.each_taken_size = yf_node_taken_size(sizeof(yf_u64_t));
+        node_pool.total_num = 1024;
+
+        node_pool.nodes_array = (char*)yf_alloc(
+                        node_pool.each_taken_size * node_pool.total_num);
+
+        yf_init_node_pool(&node_pool, &_log);
+
+        typedef std::list<void*> ListV;
+        ListV allocted_list;
+        
+        void* new_node = NULL, *cmp_node = NULL;
+        
+        for (int i = 0; i < 1024; ++i)
+        {
+                new_node = yf_alloc_node_from_pool(&node_pool, &_log);
+                ASSERT_TRUE(new_node != NULL);
+                
+                yf_u64_t  id = yf_get_id_by_node(&node_pool, new_node, &_log);
+                cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                
+                ASSERT_EQ(new_node, cmp_node);
+                
+                allocted_list.push_back(new_node);
+        }
+
+        new_node = yf_alloc_node_from_pool(&node_pool, &_log);
+        ASSERT_TRUE(new_node == NULL);
+
+        for (int i = 0; i < 16; ++i)
+        {
+                int delete_num = std::min((long)allocted_list.size(), random() % 1024);
+                
+                for (int j = 0; j < delete_num; ++j)
+                {
+                        ListV::iterator iter = allocted_list.begin();
+                        std::advance(iter, random() % allocted_list.size());
+
+                        cmp_node = *iter;
+                        yf_u64_t  id = yf_get_id_by_node(&node_pool, cmp_node, &_log);
+                        yf_free_node_to_pool(&node_pool, cmp_node, &_log);
+                        cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                        ASSERT_TRUE(cmp_node == NULL);
+                        
+                        allocted_list.erase(iter);
+                }
+
+                int add_num = random() % 1024;
+                
+                for (int j = 0; j < add_num; ++j)
+                {
+                        new_node = yf_alloc_node_from_pool(&node_pool, &_log);
+                        
+                        if (allocted_list.size() >= 1024)
+                        {
+                                ASSERT_TRUE(new_node == NULL);
+                                yf_log_debug(YF_LOG_DEBUG, &_log, 0, "used out, break now\n");
+                                break;
+                        }
+                        ASSERT_TRUE(new_node != NULL);
+                        //yf_log_debug(YF_LOG_DEBUG, &_log, 0, "size=%d\n", allocted_list.size());
+                        
+                        yf_u64_t  id = yf_get_id_by_node(&node_pool, new_node, &_log);
+                        cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+
+                        ASSERT_EQ(new_node, cmp_node);
+                        
+                        allocted_list.push_back(new_node);
+                }
+        }
+
+        if (!allocted_list.empty())
+        {
+                cmp_node = *allocted_list.begin();
+                yf_u64_t  id = yf_get_id_by_node(&node_pool, cmp_node, &_log);
+                yf_free_node_to_pool(&node_pool, cmp_node, &_log);
+                
+                cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                ASSERT_TRUE(cmp_node == NULL);
+
+                new_node = yf_alloc_node_from_pool(&node_pool, &_log);
+                cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                ASSERT_TRUE(cmp_node == NULL);
+        }
+
+        yf_free(node_pool.nodes_array);
+}
+
+
 #ifdef TEST_F_INIT
 TEST_F_INIT(BaseTest, BitOp);
 TEST_F_INIT(BaseTest, Array);
@@ -399,6 +496,7 @@ TEST_F_INIT(BaseTest, List);
 TEST_F_INIT(BaseTest, Rbtree);
 TEST_F_INIT(BaseTest, StringLog);
 TEST_F_INIT(BaseTest, Hash);
+TEST_F_INIT(BaseTest, NodePool);
 #endif
 
 int main(int argc, char **argv)

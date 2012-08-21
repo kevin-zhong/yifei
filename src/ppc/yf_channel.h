@@ -24,6 +24,8 @@ struct  yf_channel_s
         yf_fd_t   fd;
 };
 
+yf_int_t  yf_open_channel(yf_socket_t* fds, yf_int_t unblock1, yf_int_t unblock2
+                , yf_int_t close_on_exe, yf_log_t *log);
 
 yf_int_t yf_write_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log);
 yf_int_t yf_read_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log);
