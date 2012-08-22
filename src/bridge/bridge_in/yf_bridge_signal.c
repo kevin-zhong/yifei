@@ -272,15 +272,17 @@ yf_int_t  yf_bridge_mutex_unlock(yf_bridge_mutex_t* bm
 }
 
 
-yf_int_t  yf_bridge_mutex_signal(yf_bridge_mutex_t* bm
+yf_int_t  yf_bridge_mutex_signal(yf_bridge_mutex_t* bm, yf_int_t alreay_locked
                 , yf_log_t* log)
 {
-        yf_mutex_lock(bm->mutex, log);
+        if (!alreay_locked)
+                yf_mutex_lock(bm->mutex, log);
         
         if (bm->wait_num)
                 yf_cond_signal(bm->cond, log);
-        
-        yf_mutex_unlock(bm->mutex, log);
+
+        if (!alreay_locked)
+                yf_mutex_unlock(bm->mutex, log);
         return YF_OK;
 }
 

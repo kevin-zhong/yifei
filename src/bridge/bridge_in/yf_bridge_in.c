@@ -167,7 +167,9 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         assert(child_no != YF_ANY_CHILD_NO);
 
         yf_memzero_st(task_info);
-        task_info.inqueue_time = yf_now_times.clock_time;
+        
+        //note, must use wall_time, cause cross proc maybe
+        yf_real_walltime(&task_info.inqueue_time);
         task_info.id = task_id;
         task_info.timeout_ms = yf_min(1<<20, timeout_ms);
 
@@ -186,9 +188,11 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
 
         bridge_in->task_execut[child_no] += 1;
 
-        yf_log_debug3(YF_LOG_DEBUG, log, 0, 
-                        "task id=%l send to child_%xd success, execute=%d", 
-                        task_id, child_no, bridge_in->task_execut[child_no]);
+        yf_log_debug5(YF_LOG_DEBUG, log, 0, 
+                        "task id=%l send to child_%xd success, time=[%d-%d], executing=%d", 
+                        task_id, child_no, 
+                        task_info.inqueue_time.tv_sec, task_info.inqueue_time.tv_msec,
+                        bridge_in->task_execut[child_no]);
         return task_id;
 
 failed:
@@ -235,7 +239,7 @@ yf_int_t yf_attach_bridge(yf_bridge_t* bridge
 
         if (bridge_in->ctx.child_ins_type == YF_BRIDGE_INS_PROC)
                 bridge_in->task_buf[child_no] = bridge_in->task_res_buf;
-        else
+        else //TODO, free...
                 bridge_in->task_buf[child_no] = yf_alloc(bridge_in->ctx.max_task_size);
         
         if (bridge_in->task_buf[child_no] == NULL)
@@ -331,6 +335,7 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
         task_info_t  task_info;
         yf_int_t  ret;
         yf_s64_t  diff_ms;
+        yf_time_t walltime;
         yf_task_queue_t* tq = NULL;
         char* task_buf = bridge_in->task_buf[child_no];
         
@@ -355,12 +360,13 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
 
                 if (ret == YF_OK)
                 {
-                        yf_log_debug2(YF_LOG_DEBUG, log, 0, 
-                                        "task id=%l recevied by child_%xd success", 
-                                        task_info.id, child_no);
-
-                        diff_ms = yf_time_diff_ms(&yf_now_times.clock_time, 
-                                        &task_info.inqueue_time);
+                        yf_real_walltime(&walltime);
+                        
+                        diff_ms = yf_time_diff_ms(&walltime, &task_info.inqueue_time);
+                        
+                        yf_log_debug3(YF_LOG_DEBUG, log, 0, 
+                                        "task id=%l recevied by child_%xd success, diff_ms=%l", 
+                                        task_info.id, child_no, diff_ms);
                         
                         if (task_info.timeout_ms && diff_ms > task_info.timeout_ms)
                         {

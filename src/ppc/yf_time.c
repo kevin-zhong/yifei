@@ -189,6 +189,18 @@ void yf_localtime(time_t s, yf_stm_t *tm)
         tm->yf_tm_year += 1900;        
 }
 
+yf_int_t yf_real_walltime(yf_time_t* time)
+{
+        yf_utime_t  now_time;
+        
+        if (gettimeofday(&now_time, NULL) != 0)
+        {
+                return YF_ERROR;
+        }
+        yf_utime_to_time((*time), now_time);
+        return  YF_OK;
+}
+
 
 static void yf_update_log_time(yf_log_t* log)
 {

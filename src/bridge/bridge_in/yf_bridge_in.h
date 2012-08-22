@@ -50,6 +50,7 @@ typedef struct yf_bridge_in_s
         yf_task_res_handle task_res_handler;
 
         //yes, task_signal ret void, cause if fail, child may exit...
+        //and, you should lock tq before call this...
         void (*task_signal)(struct yf_bridge_in_s* bridge
                         , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);
 

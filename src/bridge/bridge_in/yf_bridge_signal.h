@@ -61,7 +61,7 @@ yf_int_t  yf_bridge_mutex_lock(yf_bridge_mutex_t* bm
 yf_int_t  yf_bridge_mutex_unlock(yf_bridge_mutex_t* bm
                 , yf_log_t* log);
 
-yf_int_t  yf_bridge_mutex_signal(yf_bridge_mutex_t* bm
+yf_int_t  yf_bridge_mutex_signal(yf_bridge_mutex_t* bm, yf_int_t alreay_locked
                 , yf_log_t* log);
 
 yf_int_t  yf_bridge_mutex_wait(yf_bridge_mutex_t* bm

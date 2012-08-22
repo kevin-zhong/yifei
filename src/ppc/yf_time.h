@@ -71,6 +71,8 @@ yf_int_t  yf_update_time(yf_time_reset_handler handle, void* data, yf_log_t* log
 
 void yf_localtime(time_t s, yf_stm_t *tm);
 
+yf_int_t yf_real_walltime(yf_time_t* time);
+
 #define yf_msleep(ms)        (void) usleep(ms * 1000)
 #define yf_sleep(s)          (void) sleep(s)
 

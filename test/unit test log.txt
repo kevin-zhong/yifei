@@ -114,3 +114,9 @@ r evt num=3, addr=00002B29513BCD80
 悲剧了...
 	
 	于是，如果需要父子进程都需要epoll，一定要分别初始化....
+	
+
+task 发送给子进程，子进程会判断时间差，结果出现了问题，时间跨度竟然变成了负值；
+发现是自己为了避免频繁调用gettimeofday对时间值进行了cache造成的；
+查了下 gettimeofday，发现这个调用其实代价不高；还是每次调用得了；
+http://blog.csdn.net/russell_tao/article/details/7185588

@@ -22,6 +22,7 @@ class BridgeTestor : public testing::Test
 {
 };
 
+
 struct  TaskTest
 {
         yf_int_t  req;
@@ -29,129 +30,6 @@ struct  TaskTest
         yf_int_t  buf_len;
         char  buf[0];
 };
-
-#define MAX_SEND_BATCH 32
-yf_u64_t  g_task_cnt = 0;
-yf_int_t  g_send_batch = 0;
-
-void on_task(yf_bridge_t* bridge
-                , void* task, size_t len, yf_u64_t id, yf_log_t* log)
-{
-        TaskTest* task_test = (TaskTest*)task;
-        task_test->resp = task_test->req * 2;
-
-        ASSERT_TRUE(yf_send_task_res(bridge, task, len, id, 0, log) == 0);
-}
-
-void on_task_res(yf_bridge_t* bridge
-                , void* task_res, size_t len, yf_u64_t id
-                , yf_int_t status, void* data, yf_log_t* log)
-{
-        uint32_t i1 = 0;
-        if (status == 0)
-        {
-                TaskTest* task_test = (TaskTest*)task_res;
-                ASSERT_EQ(task_test->req * 2, task_test->resp);
-                ASSERT_EQ(task_test->buf_len + sizeof(TaskTest), len);
-        }
-
-        yf_log_debug(YF_LOG_DEBUG, log, 0, "now g_task_cnt=%d", g_task_cnt);
-        
-        if (--g_task_cnt == 0 && g_send_batch >= MAX_SEND_BATCH)
-        {
-                for (i1 = 0; i1 < yf_last_process; i1++)
-                {
-                        kill(yf_processes[i1].pid, yf_signal_value(YF_KILL_SIGNAL));
-                }
-                yf_sleep(2);
-                yf_evt_driver_stop(_evt_driver);
-        }
-}
-
-void on_timeout_handler(struct yf_tm_evt_s* evt, yf_time_t* start)
-{
-        yf_bridge_t* bridge = (yf_bridge_t*)evt->data;
-
-        char send_buf[10240];
-        yf_uint_t  send_cnt = random() % 128 * 5;
-
-        for (int i = 0; i < send_cnt; ++i)
-        {
-                TaskTest* task_test = (TaskTest*)send_buf;
-                task_test->req = yf_mod(random(), (1<<30));
-                task_test->buf_len = yf_mod(random(), 4096);
-
-                char* cbuf = send_buf + sizeof(TaskTest);
-                yf_memset(cbuf, '8', task_test->buf_len);
-
-                yf_u64_t task_id = yf_send_task(bridge, send_buf, 
-                        sizeof(TaskTest) + task_test->buf_len, 0, 
-                        send_buf, yf_mod(random(), 1024), &_log);
-                
-                if (task_id == yf_u64_t(-1))
-                {
-                        yf_log_debug(YF_LOG_WARN, &_log, 0, "send task failed, stop...");
-                        break;
-                }
-                else
-                        ++g_task_cnt;
-        }
-
-        if (++g_send_batch < MAX_SEND_BATCH)
-        {
-                yf_time_t time_out = {0, yf_mod(random(), 1024)};
-                yf_register_tm_evt(evt, &time_out);
-        }
-        yf_log_debug(YF_LOG_DEBUG, &_log, 0, "now send batch=%d g_task_cnt=%d", 
-                        g_send_batch, g_task_cnt);
-}
-
-
-void  child_proc(void *data, yf_log_t *log)
-{
-        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, log, YF_DEFAULT_DRIVER_CB};
-        yf_evt_driver_t* child_evt_driver = yf_evt_driver_create(&driver_init);
-        ASSERT_TRUE(child_evt_driver != NULL);        
-        
-        yf_bridge_t* bridge = (yf_bridge_t*)data;
-
-        ASSERT_EQ(YF_OK, yf_attach_bridge(bridge, 
-                        child_evt_driver, on_task, &_log));
-
-        yf_evt_driver_start(child_evt_driver);
-}
-
-
-TEST_F(BridgeTestor, EvtProc)
-{
-        yf_bridge_cxt_t bridge_ctx = {YF_BRIDGE_INS_PROC, 
-                        YF_BRIDGE_INS_PROC,
-                        YF_BRIDGE_EVT_DRIVED,
-                        YF_BRIDGE_EVT_DRIVED,
-                        YF_TASK_DISTPATCH_IDLE,
-                        (void*)child_proc, 
-                        1, 10240, 128, 1024 * 1024
-                };
-        
-        yf_bridge_t* bridge = yf_bridge_create(&bridge_ctx, &_log);
-        ASSERT_TRUE(bridge != NULL);
-
-        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
-        _evt_driver = yf_evt_driver_create(&driver_init);
-        ASSERT_TRUE(_evt_driver != NULL);
-        
-        ASSERT_EQ(YF_OK, yf_attach_res_bridge(bridge, 
-                        _evt_driver, on_task_res, &_log));
-
-        yf_tm_evt_t* tm_evt;
-        yf_alloc_tm_evt(_evt_driver, &tm_evt, &_log);
-        tm_evt->data = bridge;
-        tm_evt->timeout_handler = on_timeout_handler;
-        yf_time_t time_out = {1, 200};
-        yf_register_tm_evt(tm_evt, &time_out);
-
-        yf_evt_driver_start(_evt_driver);
-}
 
 
 TEST_F(BridgeTestor, TaskQueue)
@@ -165,7 +43,7 @@ TEST_F(BridgeTestor, TaskQueue)
         char  task_buf[10240];
 
         /*
-        * note, must clear, else, repeate test will fail...
+        * note, must clear, else, repeat test will fail...
         */
         yf_memzero(tq_buf, sizeof(tq_buf));
         yf_task_queue_t* tq = yf_init_task_queue(tq_buf, sizeof(tq_buf), &log_tmp);
@@ -238,8 +116,203 @@ TEST_F(BridgeTestor, TaskQueue)
 }
 
 
+#define MAX_SEND_BATCH 64
+yf_u64_t  g_task_cnt = 0;
+yf_int_t  g_send_batch = 0;
+
+void on_task(yf_bridge_t* bridge
+                , void* task, size_t len, yf_u64_t id, yf_log_t* log)
+{
+        TaskTest* task_test = (TaskTest*)task;
+        task_test->resp = task_test->req * 2;
+
+        ASSERT_TRUE(yf_send_task_res(bridge, task, len, id, 0, log) == 0);
+
+        if (random() % 4 == 0)
+                yf_msleep(yf_mod(random(), 512));
+}
+
+void on_task_res(yf_bridge_t* bridge
+                , void* task_res, size_t len, yf_u64_t id
+                , yf_int_t status, void* data, yf_log_t* log)
+{
+        uint32_t i1 = 0;
+        if (status == 0)
+        {
+                TaskTest* task_test = (TaskTest*)task_res;
+                assert(task_test->req * 2 == task_test->resp);
+                assert(task_test->buf_len + sizeof(TaskTest) == len);
+        }
+        else {
+                yf_log_debug(YF_LOG_DEBUG, log, 0, "task_%l err status=%d", 
+                                id, status);
+        }
+
+        yf_log_debug(YF_LOG_DEBUG, log, 0, "now g_task_cnt=%d", g_task_cnt);
+        
+        if (--g_task_cnt == 0 && g_send_batch >= MAX_SEND_BATCH)
+        {
+                for (i1 = 0; i1 < yf_last_process; i1++)
+                {
+                        kill(yf_processes[i1].pid, yf_signal_value(YF_KILL_SIGNAL));
+                }
+                yf_sleep(2);
+                yf_evt_driver_stop(_evt_driver);
+
+                //cant call this on handle...
+                //yf_evt_driver_destory(_evt_driver);
+        }
+}
+
+void on_timeout_handler(struct yf_tm_evt_s* evt, yf_time_t* start)
+{
+        yf_bridge_t* bridge = (yf_bridge_t*)evt->data;
+
+        char send_buf[10240];
+        yf_uint_t  send_cnt = random() % 128 * 5;
+
+        for (int i = 0; i < send_cnt; ++i)
+        {
+                TaskTest* task_test = (TaskTest*)send_buf;
+                task_test->req = yf_mod(random(), (1<<30));
+                task_test->buf_len = yf_mod(random(), 4096);
+
+                char* cbuf = send_buf + sizeof(TaskTest);
+                yf_memset(cbuf, '8', task_test->buf_len);
+
+                yf_u64_t task_id = yf_send_task(bridge, send_buf, 
+                        sizeof(TaskTest) + task_test->buf_len, 0, 
+                        send_buf, yf_mod(random(), 1024), &_log);
+                
+                if (task_id == yf_u64_t(-1))
+                {
+                        yf_log_debug(YF_LOG_WARN, &_log, 0, "send task failed, stop...");
+                        break;
+                }
+                else
+                        ++g_task_cnt;
+        }
+
+        if (++g_send_batch < MAX_SEND_BATCH)
+        {
+                yf_time_t time_out = {0, yf_mod(random(), 1024)};
+                yf_register_tm_evt(evt, &time_out);
+        }
+        yf_log_debug(YF_LOG_DEBUG, &_log, 0, "now send batch=%d g_task_cnt=%d", 
+                        g_send_batch, g_task_cnt);
+}
+
+
+/*
+* bridge proc
+*/
+void  child_proc(void *data, yf_log_t *log)
+{
+        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, log, YF_DEFAULT_DRIVER_CB};
+        yf_evt_driver_t* child_evt_driver = yf_evt_driver_create(&driver_init);
+        ASSERT_TRUE(child_evt_driver != NULL);        
+        
+        yf_bridge_t* bridge = (yf_bridge_t*)data;
+
+        ASSERT_EQ(YF_OK, yf_attach_bridge(bridge, 
+                        child_evt_driver, on_task, &_log));
+
+        yf_evt_driver_start(child_evt_driver);
+}
+
+void aflter_stop_evt_driver(yf_evt_driver_t* evt_driver, void* data, yf_log_t* log)
+{
+        yf_evt_driver_destory(_evt_driver);
+}
+
+
+TEST_F(BridgeTestor, EvtProc)
+{
+        yf_bridge_cxt_t bridge_ctx = {YF_BRIDGE_INS_PROC, 
+                        YF_BRIDGE_INS_PROC,
+                        YF_BRIDGE_EVT_DRIVED,
+                        YF_BRIDGE_EVT_DRIVED,
+                        YF_TASK_DISTPATCH_IDLE,
+                        (void*)child_proc, 
+                        4, 10240, 128, 1024 * 1024
+                };
+        
+        yf_bridge_t* bridge = yf_bridge_create(&bridge_ctx, &_log);
+        ASSERT_TRUE(bridge != NULL);
+
+        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
+        driver_init.stop_cb = aflter_stop_evt_driver;
+        
+        _evt_driver = yf_evt_driver_create(&driver_init);
+        ASSERT_TRUE(_evt_driver != NULL);
+        
+        ASSERT_EQ(YF_OK, yf_attach_res_bridge(bridge, 
+                        _evt_driver, on_task_res, &_log));
+
+        yf_tm_evt_t* tm_evt;
+        yf_alloc_tm_evt(_evt_driver, &tm_evt, &_log);
+        tm_evt->data = bridge;
+        tm_evt->timeout_handler = on_timeout_handler;
+        yf_time_t time_out = {1, 200};
+        yf_register_tm_evt(tm_evt, &time_out);
+
+        yf_evt_driver_start(_evt_driver);
+}
+
+
+/*
+* bridge thread
+*/
+yf_thread_value_t thread_exe(void *arg)
+{
+        yf_bridge_t* bridge = (yf_bridge_t*)arg;
+
+        yf_int_t ret = yf_attach_bridge(bridge, NULL, on_task, &_log);
+        assert(ret == YF_OK);
+        
+        while (1)
+        {
+                yf_poll_task(bridge, &_log);
+        }
+        return NULL;
+}
+
+
+TEST_F(BridgeTestor, EvtThread)
+{
+        yf_bridge_cxt_t bridge_ctx = {YF_BRIDGE_INS_PROC, 
+                        YF_BRIDGE_INS_THREAD,
+                        YF_BRIDGE_EVT_DRIVED,
+                        YF_BRIDGE_BLOCKED,
+                        YF_TASK_DISTPATCH_IDLE,
+                        (void*)thread_exe, 
+                        4, 10240, 128, 1024 * 1024
+                };
+        
+        yf_bridge_t* bridge = yf_bridge_create(&bridge_ctx, &_log);
+        ASSERT_TRUE(bridge != NULL);
+
+        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
+        _evt_driver = yf_evt_driver_create(&driver_init);
+        ASSERT_TRUE(_evt_driver != NULL);
+        
+        ASSERT_EQ(YF_OK, yf_attach_res_bridge(bridge, 
+                        _evt_driver, on_task_res, &_log));
+
+        yf_tm_evt_t* tm_evt;
+        yf_alloc_tm_evt(_evt_driver, &tm_evt, &_log);
+        tm_evt->data = bridge;
+        tm_evt->timeout_handler = on_timeout_handler;
+        yf_time_t time_out = {1, 200};
+        yf_register_tm_evt(tm_evt, &time_out);
+
+        yf_evt_driver_start(_evt_driver);
+}
+
+
 #ifdef TEST_F_INIT
 TEST_F_INIT(BridgeTestor, EvtProc);
+TEST_F_INIT(BridgeTestor, EvtThread);
 TEST_F_INIT(BridgeTestor, TaskQueue);
 #endif
 
@@ -270,7 +343,7 @@ int main(int argc, char **argv)
         assert(ret == YF_OK);
 
         ret = yf_init_processs(&_log);
-        assert(ret == YF_OK);
+        assert(ret == YF_OK);        
 
         ret = yf_init_threads(36, 1024 * 1024, &_log);
         assert(ret == YF_OK);

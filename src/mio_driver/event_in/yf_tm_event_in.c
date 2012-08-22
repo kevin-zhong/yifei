@@ -201,7 +201,7 @@ static void yf_timeout_handler(yf_tm_evt_driver_in_t* tm_evt_driver
                 tm_evt_driver->near_evts_num--;
         ptimer->head = NULL;
 
-        yf_slist_push(&ptimer->linker, &tm_evt_driver->timeout_list);
+        yf_slist_push(&ptimer->free_linker, &tm_evt_driver->timeout_list);
 }
 
 
@@ -214,7 +214,7 @@ static void  yf_timeout_caller(yf_tm_evt_driver_in_t* tm_evt_driver)
         while (!yf_slist_empty(&tm_evt_driver->timeout_list))
         {
                 pos = yf_slist_pop(&tm_evt_driver->timeout_list);
-                ptimer = yf_link_2_timer(pos);
+                ptimer = container_of(pos, yf_timer_t, free_linker);
 
                 if (yf_is_fd_evt(ptimer))
                 {

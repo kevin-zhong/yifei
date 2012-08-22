@@ -6,16 +6,17 @@
 yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log);
 yf_int_t  yf_bridge_bt_creator(yf_bridge_in_t* bridge_in, yf_log_t* log);
 
-#define yf_bridge_tno(bridge, bridge_bt) \
+//TODO, performance...
+#define yf_bridge_tno(bridge, bridge_bt, child_no) \
         yf_tid_t tid = yf_thread_self(); \
-        //TODO, performance... \
         yf_int_t i1 = 0; \
         for ( i1 = 0; i1 <  bridge->ctx.child_num; i1++ ) \
         { \
-                if (bridge_bt->tids[i1] == tid) \
-                        return i1; \
+                if (bridge_bt->tids[i1] == tid) {\
+                        child_no = i1; \
+                        break; \
+                } \
         } \
-        assert(0);
 
 
 /*
@@ -106,8 +107,9 @@ static void yf_bridge_thr_destory(yf_bridge_in_t* bridge, yf_log_t* log)
 static yf_int_t yf_bridge_thr_child_no(yf_bridge_in_t* bridge, yf_log_t* log)
 {
         yf_bridge_thr_t* bridge_thr = (yf_bridge_thr_t*)bridge->bridge_data;
-        yf_bridge_tno(bridge, bridge_thr);
-        return 0;
+        yf_int_t  child_no = -1;
+        yf_bridge_tno(bridge, bridge_thr, child_no);
+        return child_no;
 }
 
 
@@ -263,7 +265,7 @@ static void yf_bridge_bt_task_signal(yf_bridge_in_t* bridge
 {
         yf_bridge_bt_t* bridge_bt = (yf_bridge_bt_t*)bridge->bridge_data;
         
-        yf_bridge_mutex_signal(&bridge_bt->mutex, log);
+        yf_bridge_mutex_signal(&bridge_bt->mutex, 1, log);
 }
 
 static yf_int_t yf_bridge_bt_attach_res_bridge(yf_bridge_in_t* bridge
@@ -300,8 +302,11 @@ static void yf_bridge_bt_destory(yf_bridge_in_t* bridge, yf_log_t* log)
 static yf_int_t yf_bridge_bt_child_no(yf_bridge_in_t* bridge, yf_log_t* log)
 {
         yf_bridge_bt_t* bridge_bt = (yf_bridge_bt_t*)bridge->bridge_data;
-        yf_bridge_tno(bridge, bridge_bt);
-        return 0;
+        yf_int_t  child_no = -1;
+        yf_bridge_tno(bridge, bridge_bt, child_no);
+
+        //yf_log_debug1(YF_LOG_DEBUG, log, 0, "child_no=%d", child_no);
+        return child_no;
 }
 
 
