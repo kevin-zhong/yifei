@@ -95,6 +95,11 @@ AC_ARG_ENABLE([thread],
 	[AS_HELP_STRING([--disable-thread], [disable thread])],
 	[], [AC_DEFINE([YF_THREADS], [1], ["enable thread"])])
 
+# multi.. evt driver option
+AC_ARG_ENABLE([multi_evt_driver],
+	[AS_HELP_STRING([--enable-multi-evt-driver], [eanble multi evt driver])],
+	[AC_DEFINE([YF_MULTI_EVT_DRIVER], [], ["enable multi evt driver"])], [])
+
 # check for atomic support
 AC_CHECK_HEADERS([asm/atomic.h linux/atomic.h asm/atomic_ops.h libkern/OSAtomic.h])
 

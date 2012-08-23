@@ -3,12 +3,35 @@
 #include <mio_driver/yf_event.h>
 #include "event_in/yf_event_base_in.h"
 
-static yf_int_t  yf_sig_evt_driver_inited = 0;
 const yf_str_t yf_evt_type_n[] = {yf_str(""), yf_str("read_evt"), yf_str("write_evt")};
+
+static yf_lock_t yf_evt_lock = YF_LOCK_INITIALIZER;
+
+static yf_int_t  yf_sig_evt_driver_inited = 0;
+static yf_int_t  yf_evt_driver_cnt = 0;
 
 yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init)
 {
-        CHECK_RV(driver_init->include_sig && yf_sig_evt_driver_inited, NULL)
+        char* err_desc[] = {"", "cant create more than one sig evt driver", 
+                        "just can create one evt dirver in each proc"};
+        yf_int_t  chck_ret = 0;
+        
+        yf_lock(&yf_evt_lock);
+        if (driver_init->include_sig && yf_sig_evt_driver_inited)
+                chck_ret = 1;
+        else if (yf_evt_driver_cnt >= 1)
+        {
+#if !defined (YF_MULTI_EVT_DRIVER)
+                chck_ret = 2;
+#endif
+        }
+        yf_unlock(&yf_evt_lock);
+        
+        if (chck_ret)
+        {
+                yf_log_error(YF_LOG_ERR, driver_init->log, 0, err_desc[chck_ret]);
+                return NULL;
+        }
         
         yf_evt_driver_in_t* evt_driver = yf_alloc(sizeof(yf_evt_driver_in_t));
         CHECK_RV(evt_driver == NULL, NULL);
@@ -52,6 +75,10 @@ yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init)
         evt_driver->proc_driver_inited = 1;
         
         evt_driver->tm_driver.log = evt_driver->driver_ctx.log;
+
+        yf_lock(&yf_evt_lock);
+        ++yf_evt_driver_cnt;
+        yf_unlock(&yf_evt_lock);
         
         return  (yf_evt_driver_t*)evt_driver;
 }
@@ -80,7 +107,13 @@ void yf_evt_driver_destory(yf_evt_driver_t* driver)
         }
 
         if (evt_driver->proc_driver_inited)
+        {
                 yf_destory_proc_driver(&evt_driver->proc_driver);
+                
+                yf_lock(&yf_evt_lock);
+                --yf_evt_driver_cnt;
+                yf_unlock(&yf_evt_lock);
+        }
         
         yf_free(evt_driver);
 }

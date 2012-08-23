@@ -203,41 +203,29 @@ void on_timeout_handler(struct yf_tm_evt_s* evt, yf_time_t* start)
 }
 
 
-/*
-* bridge proc
-*/
-void  child_proc(void *data, yf_log_t *log)
-{
-        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, log, YF_DEFAULT_DRIVER_CB};
-        yf_evt_driver_t* child_evt_driver = yf_evt_driver_create(&driver_init);
-        ASSERT_TRUE(child_evt_driver != NULL);        
-        
-        yf_bridge_t* bridge = (yf_bridge_t*)data;
-
-        ASSERT_EQ(YF_OK, yf_attach_bridge(bridge, 
-                        child_evt_driver, on_task, &_log));
-
-        yf_evt_driver_start(child_evt_driver);
-}
-
 void aflter_stop_evt_driver(yf_evt_driver_t* evt_driver, void* data, yf_log_t* log)
 {
         yf_evt_driver_destory(_evt_driver);
 }
 
 
-TEST_F(BridgeTestor, EvtProc)
+void  evt_driven_child(yf_bridge_t* bridge, yf_log_t *log)
 {
-        yf_bridge_cxt_t bridge_ctx = {YF_BRIDGE_INS_PROC, 
-                        YF_BRIDGE_INS_PROC,
-                        YF_BRIDGE_EVT_DRIVED,
-                        YF_BRIDGE_EVT_DRIVED,
-                        YF_TASK_DISTPATCH_IDLE,
-                        (void*)child_proc, 
-                        4, 10240, 128, 1024 * 1024
-                };
+        yf_evt_driver_init_t driver_init = {0, 128, 16, 0, log, YF_DEFAULT_DRIVER_CB};
+        driver_init.stop_cb = aflter_stop_evt_driver;
         
-        yf_bridge_t* bridge = yf_bridge_create(&bridge_ctx, &_log);
+        yf_evt_driver_t* child_evt_driver = yf_evt_driver_create(&driver_init);
+        assert(child_evt_driver != NULL);
+
+        yf_int_t ret = yf_attach_bridge(bridge, child_evt_driver, on_task, log);
+        assert(ret == YF_OK);
+
+        yf_evt_driver_start(child_evt_driver);
+}
+
+void  bridge_parent_init(yf_bridge_cxt_t* bridge_ctx)
+{
+        yf_bridge_t* bridge = yf_bridge_create(bridge_ctx, &_log);
         ASSERT_TRUE(bridge != NULL);
 
         yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
@@ -256,12 +244,36 @@ TEST_F(BridgeTestor, EvtProc)
         yf_time_t time_out = {1, 200};
         yf_register_tm_evt(tm_evt, &time_out);
 
-        yf_evt_driver_start(_evt_driver);
+        yf_evt_driver_start(_evt_driver);        
 }
 
 
 /*
-* bridge thread
+* bridge proc
+*/
+void  child_proc(void *data, yf_log_t *log)
+{
+        yf_bridge_t* bridge = (yf_bridge_t*)data;
+        evt_driven_child(bridge, log);
+}
+
+
+TEST_F(BridgeTestor, EvtProc)
+{
+        yf_bridge_cxt_t bridge_ctx = {YF_BRIDGE_INS_PROC, 
+                        YF_BRIDGE_INS_PROC,
+                        YF_BRIDGE_EVT_DRIVED,
+                        YF_BRIDGE_EVT_DRIVED,
+                        YF_TASK_DISTPATCH_IDLE,
+                        (void*)child_proc, 
+                        4, 10240, 128, 1024 * 1024
+                };
+        bridge_parent_init(&bridge_ctx);
+}
+
+
+/*
+* bridge blocked thread
 */
 yf_thread_value_t thread_exe(void *arg)
 {
@@ -278,7 +290,7 @@ yf_thread_value_t thread_exe(void *arg)
 }
 
 
-TEST_F(BridgeTestor, EvtThread)
+TEST_F(BridgeTestor, BlockedThread)
 {
         yf_bridge_cxt_t bridge_ctx = {YF_BRIDGE_INS_PROC, 
                         YF_BRIDGE_INS_THREAD,
@@ -288,30 +300,39 @@ TEST_F(BridgeTestor, EvtThread)
                         (void*)thread_exe, 
                         4, 10240, 128, 1024 * 1024
                 };
-        
-        yf_bridge_t* bridge = yf_bridge_create(&bridge_ctx, &_log);
-        ASSERT_TRUE(bridge != NULL);
-
-        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
-        _evt_driver = yf_evt_driver_create(&driver_init);
-        ASSERT_TRUE(_evt_driver != NULL);
-        
-        ASSERT_EQ(YF_OK, yf_attach_res_bridge(bridge, 
-                        _evt_driver, on_task_res, &_log));
-
-        yf_tm_evt_t* tm_evt;
-        yf_alloc_tm_evt(_evt_driver, &tm_evt, &_log);
-        tm_evt->data = bridge;
-        tm_evt->timeout_handler = on_timeout_handler;
-        yf_time_t time_out = {1, 200};
-        yf_register_tm_evt(tm_evt, &time_out);
-
-        yf_evt_driver_start(_evt_driver);
+        bridge_parent_init(&bridge_ctx);
 }
+
+
+/*
+* bridge evt driven thread
+*/
+yf_thread_value_t evt_thread_exe(void *arg)//like child_proc...
+{
+        yf_bridge_t* bridge = (yf_bridge_t*)arg;
+        evt_driven_child(bridge, &_log);
+        return NULL;
+}
+
+
+TEST_F(BridgeTestor, EvtThread)
+{
+        yf_bridge_cxt_t bridge_ctx = {YF_BRIDGE_INS_PROC, 
+                        YF_BRIDGE_INS_THREAD,
+                        YF_BRIDGE_EVT_DRIVED,
+                        YF_BRIDGE_EVT_DRIVED,
+                        YF_TASK_DISTPATCH_IDLE,
+                        (void*)evt_thread_exe, 
+                        4, 10240, 128, 1024 * 1024
+                };
+        bridge_parent_init(&bridge_ctx);
+}
+
 
 
 #ifdef TEST_F_INIT
 TEST_F_INIT(BridgeTestor, EvtProc);
+TEST_F_INIT(BridgeTestor, BlockedThread);
 TEST_F_INIT(BridgeTestor, EvtThread);
 TEST_F_INIT(BridgeTestor, TaskQueue);
 #endif

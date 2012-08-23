@@ -9,6 +9,9 @@
 #include <pthread.h>
 
 typedef  pthread_mutex_t  yf_mlock_t;
+
+#define  YF_MLOCK_INITIALIZER PTHREAD_MUTEX_INITIALIZER
+
 #define  yf_mlock_init(lock)  pthread_mutex_init(lock, NULL)
 #define  yf_mlock_destory(lock)  pthread_mutex_destroy(lock)
 
@@ -20,6 +23,8 @@ typedef  pthread_mutex_t  yf_mlock_t;
 #if YF_HAVE_ATOMIC_CMP_SWP
 
 typedef  yf_atomic_t  yf_lock_t;
+
+#define  YF_LOCK_INITIALIZER 0
 
 #define  yf_lock_init(lock) (*(lock) = 0)
 #define  yf_lock_destory(lock)
@@ -37,6 +42,8 @@ void _yf_lock_in(yf_lock_t* lock, yf_atomic_t v);
 #elif (YF_THREADS) && defined  HAVE_PTHREAD_H
 
 typedef  yf_mlock_t  yf_lock_t;
+
+#define  YF_LOCK_INITIALIZER YF_MLOCK_INITIALIZER
 
 #define  yf_lock_init(lock) yf_mlock_init(lock)
 #define  yf_lock_destory(lock) yf_mlock_destory(lock)

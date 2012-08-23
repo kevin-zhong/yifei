@@ -25,12 +25,32 @@ typedef pthread_t yf_tid_t;
 
 
 typedef pthread_key_t yf_tls_key_t;
+typedef pthread_once_t yf_tls_once_t;
 
 #define yf_thread_key_create(key)   pthread_key_create(key, NULL)
 #define yf_thread_key_create_n      "pthread_key_create()"
 #define yf_thread_set_tls           pthread_setspecific
 #define yf_thread_set_tls_n         "pthread_setspecific()"
 #define yf_thread_get_tls           pthread_getspecific
+
+#define yf_thread_get_specific(_key, _init_done, _thread_init, _addr, _size) do { \
+        pthread_once(&_init_done, _thread_init); \
+        _addr = yf_thread_get_tls(_key); \
+        if(_addr == NULL) { \
+                _addr = yf_alloc(_size); \
+                yf_memzero(_addr, _size); \
+                assert (_addr != NULL); \
+                yf_thread_set_tls(_key, _addr); \
+        } \
+} while (0)
+
+#define YF_THREAD_DEF_KEY_ONCE(_key, _init_done, _thread_init) \
+        static yf_tls_key_t _key; \
+        static yf_tls_once_t _init_done = PTHREAD_ONCE_INIT; \
+        static void _thread_init(void) \
+        { \
+                pthread_key_create(&_key, free); \
+        }
 
 
 #define YF_MUTEX_LIGHT     0

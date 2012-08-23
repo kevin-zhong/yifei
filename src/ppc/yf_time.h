@@ -60,9 +60,32 @@ typedef struct tm  yf_stm_t;
 #define yf_tm_wday           tm_wday
 #define yf_tm_isdst          tm_isdst
 
-extern  yf_times_t  yf_now_times;
 extern  yf_times_t  yf_start_times;
-extern  yf_str_t      yf_log_time;
+
+typedef struct
+{
+        yf_times_t  now_times;
+        yf_str_t      log_time;
+        yf_utime_t  last_clock_utime;
+        yf_utime_t  last_real_wall_utime;
+        char           log_buf[sizeof("70/01/01 12:00:00 000")-1];
+}
+yf_time_data_t;
+
+/*
+* add when 2012-08-23(7.7) for supporting thread multi evt driver...
+*/
+#if !defined (YF_MULTI_EVT_DRIVER)
+extern yf_time_data_t  yf_time_data_ins;
+#define yf_time_data (&yf_time_data_ins)
+#else
+yf_time_data_t* yf_time_data_addr();
+#define yf_time_data yf_time_data_addr()
+#endif
+
+#define yf_now_times (yf_time_data->now_times)
+#define yf_log_time (yf_time_data->log_time)
+
 
 typedef  void (*yf_time_reset_handler)(yf_utime_t* new_time, yf_time_t* diff_tm, void* data);
 

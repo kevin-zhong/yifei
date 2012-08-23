@@ -1,10 +1,32 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
-
-yf_times_t  yf_now_times;
 yf_times_t  yf_start_times;
-yf_str_t      yf_log_time;
+
+#define yf_init_timedata(time_data) \
+        if (time_data->log_time.data == NULL) { \
+                time_data->log_time.data = time_data->log_buf; \
+                time_data->log_time.len = sizeof(time_data->log_buf); \
+        }
+
+#if !defined (YF_MULTI_EVT_DRIVER)
+yf_time_data_t  yf_time_data_ins;
+
+#else
+
+YF_THREAD_DEF_KEY_ONCE(__key, __init_done, __thread_init);
+
+yf_time_data_t* yf_time_data_addr()
+{
+        yf_time_data_t* time_data;
+        
+        yf_thread_get_specific(__key, __init_done, __thread_init, 
+                        time_data, sizeof(yf_time_data_t));
+        
+        yf_init_timedata(time_data);
+        return time_data;
+}
+#endif
 
 static void yf_update_log_time(yf_log_t* log);
 
@@ -16,20 +38,20 @@ static void yf_update_log_time(yf_log_t* log);
 
 #if defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_MONOTONIC)
 
-static yf_utime_t  yf_last_clock_utime;
-static yf_utime_t  yf_last_real_wall_utime;
-
 #define  YF_WALL_GET_INTERVAL_TMS  120
 
 yf_int_t  yf_init_time(yf_log_t* log)
 {
+        yf_time_data_t* time_data = yf_time_data;
+        yf_init_timedata(time_data);
+        
         if (gettimeofday(&yf_start_times.wall_utime, NULL) != 0)
         {
                 yf_log_error(YF_LOG_WARN, log, yf_errno, "gettimeofday err");
                 return YF_ERROR;
         }
 
-        yf_last_real_wall_utime = yf_start_times.wall_utime;
+        time_data->last_real_wall_utime = yf_start_times.wall_utime;
 
         //clock time
         struct timespec ts;
@@ -40,10 +62,10 @@ yf_int_t  yf_init_time(yf_log_t* log)
                 return YF_ERROR;
         }
         
-        yf_last_clock_utime.tv_sec = ts.tv_sec;
-        yf_last_clock_utime.tv_usec = ts.tv_nsec / 1000;
+        time_data->last_clock_utime.tv_sec = ts.tv_sec;
+        time_data->last_clock_utime.tv_usec = ts.tv_nsec / 1000;
 
-        yf_start_times.clock_utime = yf_last_clock_utime;
+        yf_start_times.clock_utime = time_data->last_clock_utime;
 
         yf_utime_to_time(yf_start_times.clock_time, yf_start_times.clock_utime);
 
@@ -59,6 +81,7 @@ yf_int_t  yf_init_time(yf_log_t* log)
 yf_int_t  yf_update_time(yf_time_reset_handler handle, void* data, yf_log_t* log)
 {
         struct timespec ts;
+        yf_time_data_t* time_data = yf_time_data;
         
         if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
         {
@@ -71,16 +94,16 @@ yf_int_t  yf_update_time(yf_time_reset_handler handle, void* data, yf_log_t* log
 
         yf_utime_to_time(yf_now_times.clock_time, yf_now_times.clock_utime);
 
-        if (yf_now_times.clock_utime.tv_sec < yf_last_clock_utime.tv_sec
+        if (yf_now_times.clock_utime.tv_sec < time_data->last_clock_utime.tv_sec
                 + YF_WALL_GET_INTERVAL_TMS)
         {
-                yf_now_times.wall_utime.tv_usec = yf_last_real_wall_utime.tv_usec 
+                yf_now_times.wall_utime.tv_usec = time_data->last_real_wall_utime.tv_usec 
                                 + yf_now_times.clock_utime.tv_usec 
-                                - yf_last_clock_utime.tv_usec;
+                                - time_data->last_clock_utime.tv_usec;
                 
-                yf_now_times.wall_utime.tv_sec = yf_last_real_wall_utime.tv_sec
+                yf_now_times.wall_utime.tv_sec = time_data->last_real_wall_utime.tv_sec
                                 + yf_now_times.clock_utime.tv_sec 
-                                - yf_last_clock_utime.tv_sec;
+                                - time_data->last_clock_utime.tv_sec;
                 
                 if ((yf_s32_t)yf_now_times.wall_utime.tv_usec < 0)
                 {
@@ -98,7 +121,7 @@ yf_int_t  yf_update_time(yf_time_reset_handler handle, void* data, yf_log_t* log
 
         yf_log_debug0(YF_LOG_DEBUG, log, 0, "update real wall time now");
 
-        yf_last_clock_utime = yf_now_times.clock_utime;
+        time_data->last_clock_utime = yf_now_times.clock_utime;
 
         if (gettimeofday(&yf_now_times.wall_utime, NULL) != 0)
         {
@@ -106,7 +129,7 @@ yf_int_t  yf_update_time(yf_time_reset_handler handle, void* data, yf_log_t* log
                 return YF_ERROR;
         }
 
-        yf_last_real_wall_utime = yf_now_times.wall_utime;
+        time_data->last_real_wall_utime = yf_now_times.wall_utime;
         yf_update_log_time(log);
         return  YF_OK;
 }
