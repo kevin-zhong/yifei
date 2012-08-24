@@ -34,12 +34,12 @@ void  yf_on_signal_in(int signo)
 
 
 yf_int_t  yf_register_singal_evt(yf_evt_driver_t* driver
-                , yf_signal_t* signal, yf_log_t* log)
+                , yf_sig_event_t* sig_evt, yf_log_t* log)
 {
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
         assert(yf_check_be_magic(evt_driver));
         
-        yf_int_t  signo = signal->signo;
+        yf_int_t  signo = sig_evt->signo;
         yf_sig_driver_in_t* sig_driver = evt_driver->sig_driver;
         
         if (signo >= YF_ARRAY_SIZE(sig_driver->singal_events))
@@ -55,11 +55,11 @@ yf_int_t  yf_register_singal_evt(yf_evt_driver_t* driver
 
         CHECK_RV(yf_set_sig_handler(signo, yf_on_signal_in, log), YF_ERROR);
 
-        yf_log_debug2(YF_LOG_DEBUG, log, 0, "register sig evt, signo=%d, ptr=%P", 
-                        signo, signal->sig_handler);
+        yf_log_debug1(YF_LOG_DEBUG, log, 0, "register sig evt, signo=%d", signo);
 
-        sig_driver->singal_events[signo].signal = *signal;
-        sig_driver->singal_events[signo].log = log;
+        sig_evt->log = log;
+        sig_evt->driver = driver;
+        sig_driver->singal_events[signo].evt = *sig_evt;
         sig_driver->singal_events[signo].set = 1;
         return  YF_OK;
 }
@@ -80,26 +80,12 @@ yf_int_t  yf_unregister_singal_evt(yf_evt_driver_t* driver
                 return  YF_ERROR;
         }
         
-        CHECK_RV(yf_set_sig_handler(signo, SIG_IGN, sig_evt->log), YF_ERROR);
+        CHECK_RV(yf_set_sig_handler(signo, SIG_IGN, sig_evt->evt.log), YF_ERROR);
 
-        yf_log_debug2(YF_LOG_DEBUG, sig_evt->log, 0, "unregister sig evt, signo=%d, ptr=%P", 
-                        signo, sig_evt->signal.sig_handler);
+        yf_log_debug1(YF_LOG_DEBUG, sig_evt->evt.log, 0, "unregister sig evt, signo=%d", signo);
         
         yf_memzero(sig_evt, sizeof(yf_sig_event_in_t));
         return  YF_OK;
-}
-
-
-yf_int_t  yf_register_singal_evts(yf_evt_driver_t* driver
-                , yf_signal_t* signals, yf_log_t* log)
-{
-        yf_signal_t* sig;
-        
-        for (sig = signals; sig->signo != 0; sig++)
-        {
-                CHECK_RV(yf_register_singal_evt(driver, sig, log) != YF_OK, YF_ERROR);
-        }
-        return YF_OK;
 }
 
 
@@ -108,7 +94,7 @@ void  yf_sig_poll(yf_sig_driver_in_t* sig_driver)
         yf_int_t i1 = 0;
         yf_int_t sig_no;
         yf_set_bits  set_bits;
-        signal_ptr  sig_handler;
+        yf_sig_event_t* sig_evt;
         
         yf_get_set_bits(&sig_driver->siged_flag, set_bits);
 
@@ -118,12 +104,12 @@ void  yf_sig_poll(yf_sig_driver_in_t* sig_driver)
                 if (sig_no == YF_END_INDEX)
                         break;
 
-                sig_handler = sig_driver->singal_events[sig_no].signal.sig_handler;
-                if (sig_handler)
+                sig_evt = &sig_driver->singal_events[sig_no].evt;
+                if (sig_evt->sig_evt_handler)
                 {
-                        yf_log_debug1(YF_LOG_DEBUG, sig_driver->singal_events[sig_no].log, 0, 
+                        yf_log_debug1(YF_LOG_DEBUG, sig_evt->log, 0, 
                                         "sig=[%d] catched", sig_no);
-                        sig_handler(sig_no);
+                        sig_evt->sig_evt_handler(sig_evt);
                 }
                 else {
                         yf_log_error(YF_LOG_WARN, sig_driver->log, 0, 

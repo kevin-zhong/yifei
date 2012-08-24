@@ -86,37 +86,35 @@ void  child_process(void *data, yf_log_t *log)
 }
 
 
-void on_signal(yf_int_t signo);
-
 yf_signal_t child_signals[] = {
         { yf_signal_value(YF_RECONFIGURE_SIGNAL),
           "SIG" yf_value(YF_RECONFIGURE_SIGNAL), "reload",
-          on_signal},
+          NULL},
         { yf_signal_value(YF_NOACCEPT_SIGNAL),
           "SIG" yf_value(YF_NOACCEPT_SIGNAL),"stop_accept",
-          on_signal},
+          NULL},
         { yf_signal_value(YF_TERMINATE_SIGNAL),
           "SIG" yf_value(YF_TERMINATE_SIGNAL), "stop",
-          on_signal},
+          NULL},
         { yf_signal_value(YF_SHUTDOWN_SIGNAL),
           "SIG" yf_value(YF_SHUTDOWN_SIGNAL),"quit",
-          on_signal},
+          NULL},
         { yf_signal_value(YF_CHANGEBIN_SIGNAL),
           "SIG" yf_value(YF_CHANGEBIN_SIGNAL),"",
-          on_signal},
-        { SIGALRM,   "SIGALRM",           "", on_signal},
+          NULL},
+        { SIGALRM,   "SIGALRM",           "", NULL},
         { SIGSYS,      "SIGSYS, SIG_IGN",   "", NULL},
         { SIGPIPE,     "SIGPIPE, SIG_IGN",  "", NULL},
         { 0,              NULL,                "", NULL}
 };
 
-void on_signal(yf_int_t signo)
+void on_signal(yf_sig_event_t* sig_evt)
 {
-        printf("signo=%d\t", signo);
+        printf("signo=%d\t", sig_evt->signo);
         uint32_t i1 = 0;
         for ( i1 = 0; i1 < YF_ARRAY_SIZE(child_signals); i1++ )
         {
-                if (child_signals[i1].signo == signo)
+                if (child_signals[i1].signo == sig_evt->signo)
                 {
                         printf("singnal=(%s) happend", child_signals[i1].name);
                         break;
@@ -124,7 +122,7 @@ void on_signal(yf_int_t signo)
         }
         printf("\n");
         
-        if (signo == yf_signal_value(YF_SHUTDOWN_SIGNAL))
+        if (sig_evt->signo == yf_signal_value(YF_SHUTDOWN_SIGNAL))
                 exit(0);
 }
 
@@ -139,7 +137,13 @@ void  empty_child_proc(void *data, yf_log_t *log)
         yf_evt_driver_init_t driver_init = {0, 128, 16, 1, log, YF_DEFAULT_DRIVER_CB};
         yf_evt_driver_t * driver = yf_evt_driver_create(&driver_init);
 
-        yf_register_singal_evts(driver, child_signals, log);
+        yf_sig_event_t  sig_evt = {0, data, log, NULL, on_signal};
+
+        for (yf_signal_t* sig = child_signals; sig->signo; ++sig)
+        {
+                sig_evt.signo = sig->signo;
+                yf_register_singal_evt(driver, &sig_evt, log);
+        }
         yf_evt_driver_start(driver);
 }
 
@@ -439,15 +443,11 @@ void on_exe_callback(yf_processor_event_t* proc_evt)
 }
 
 
-void on_exe_exit_signal(yf_int_t signo)
+void on_exe_exit_signal(yf_sig_event_t* sig_evt)
 {
-        yf_process_get_status(&_log);
+        yf_process_get_status(sig_evt->log);
 }
 
-yf_signal_t proc_evt_signals[] = {
-        { SIGCHLD,   "SIGCHLD",           "", on_exe_exit_signal},
-        { 0,              NULL,                "", NULL}
-};
 
 TEST_F(ProcTestor, ProcEvt)
 {
@@ -458,7 +458,8 @@ TEST_F(ProcTestor, ProcEvt)
         yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
         g_proc_driver = yf_evt_driver_create(&driver_init);
 
-        yf_register_singal_evts(g_proc_driver, proc_evt_signals, &_log);
+        yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, on_exe_exit_signal};
+        yf_register_singal_evt(g_proc_driver, &sig_child_evt, &_log);
 
         yf_time_t  time_out = {6, 0};
 

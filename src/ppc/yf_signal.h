@@ -7,7 +7,9 @@
 #define _yf_singal_helper(n)  SIG##n
 #define yf_signal_value(n)      _yf_singal_helper(n)
 
+//perform a core dump
 #define YF_SHUTDOWN_SIGNAL      QUIT
+//SIGTERM is the default signal sent to a process by the kill or killall commands
 #define YF_TERMINATE_SIGNAL     TERM
 #define YF_NOACCEPT_SIGNAL      WINCH
 #define YF_RECONFIGURE_SIGNAL   HUP

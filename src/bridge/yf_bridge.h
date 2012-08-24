@@ -76,6 +76,7 @@ yf_uint_t  yf_bridge_task_num(yf_bridge_t* bridge);
 yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx, yf_log_t* log);
 
 //will destory childs and destory bridge...
+//if in proc child mod, child proc will recv a SIGTERM signal...
 yf_int_t  yf_bridge_destory(yf_bridge_t* bridge, yf_log_t* log);
 
 yf_int_t yf_attach_res_bridge(yf_bridge_t* bridge

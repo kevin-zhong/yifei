@@ -8,8 +8,7 @@
 typedef struct yf_sig_event_in_s
 {
         yf_int_t  set;
-        yf_log_t *log;
-        yf_signal_t  signal;
+        yf_sig_event_t evt;
 }
 yf_sig_event_in_t;
 

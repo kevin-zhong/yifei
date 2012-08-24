@@ -14,11 +14,15 @@ typedef struct yf_bridge_proc_s
         yf_task_queue_t** rtqs;
         yf_shm_t  shm;
         yf_int_t  child_no;
+        yf_log_t* plog;
+        yf_evt_driver_t* evt_driver;
 }
 yf_bridge_proc_t;
 
 
 static void yf_bridge_proc_exit_cb(struct  yf_process_s* proc);
+static void yf_bridge_child_proc_spawn(yf_bridge_in_t* bridge_in
+                , yf_int_t child_no, yf_int_t respawn, yf_log_t* log);
 
 static yf_int_t yf_bridge_proc_lock_tq(yf_bridge_in_t* bridge
                 , yf_task_queue_t** tq, yf_int_t* child_no, yf_log_t* log)
@@ -60,6 +64,7 @@ static yf_int_t yf_bridge_proc_attach_res_bridge(yf_bridge_in_t* bridge
         yf_int_t ret;
         yf_process_t* proc;
         yf_bridge_proc_t* bridge_proc = (yf_bridge_proc_t*)bridge->bridge_data;
+        bridge_proc->evt_driver = evt_driver;
         
         for ( i1 = 0; i1 <  bridge->ctx.child_num; i1++ )
         {
@@ -81,12 +86,27 @@ static yf_int_t yf_bridge_proc_attach_res_bridge(yf_bridge_in_t* bridge
 static void yf_bridge_proc_destory(yf_bridge_in_t* bridge, yf_log_t* log)
 {
         yf_int_t i1 = 0;
+        yf_process_t* proc;
         yf_bridge_proc_t* bridge_proc = (yf_bridge_proc_t*)bridge->bridge_data;
 
         for ( i1 = 0; i1 <  bridge->ctx.child_num; i1++ )
         {
-                //TODO, collect child procs...
+                proc = yf_processes + yf_pid_slot(bridge_proc->pids[i1]);
+                
+                if (proc->pid == YF_INVALID_PID)
+                        continue;
+
+                proc->exit_cb = NULL;
+                
+                if (kill(proc->pid, yf_signal_value(YF_TERMINATE_SIGNAL)) != 0)
+                {
+                        yf_log_error(YF_LOG_WARN, log, yf_errno, 
+                                        "collect child_%d, pid=%P failed", 
+                                        i1, proc->pid);
+                }
+                
                 yf_bridge_channel_uninit(bridge_proc->channels + i1, 1, log);
+                yf_close_channel(bridge_proc->channels[i1].channels, log);
         }
         
         yf_named_shm_destory(&bridge_proc->shm);
@@ -123,8 +143,8 @@ static yf_int_t yf_bridge_proc_attach_bridge(yf_bridge_in_t* bridge
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "init channel_%d failed", child_no);
         }
-
-        yf_log_debug1(YF_LOG_DEBUG, log, 0, "init channel_%d success", child_no);
+        else
+                yf_log_debug1(YF_LOG_DEBUG, log, 0, "init channel_%d success", child_no);
         return ret;
 }
 
@@ -156,6 +176,8 @@ yf_int_t  yf_bridge_pp_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         yf_memzero(bridge_proc, all_size);
 
         bridge_in->bridge_data = bridge_proc;
+
+        bridge_proc->plog = log;
 
         bridge_proc->channels = yf_mem_off(bridge_proc, sizeof(yf_bridge_proc_t));
         bridge_proc->pids = yf_mem_off(bridge_proc->channels, channls_size);
@@ -208,13 +230,7 @@ yf_int_t  yf_bridge_pp_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
 
         for ( i1 = 0; i1 < bridge_in->ctx.child_num ; i1++ )
         {
-                bridge_proc->child_no = i1;
-                bridge_proc->pids[i1] = yf_spawn_process(
-                                (yf_spawn_proc_pt)bridge_in->ctx.exec_func, 
-                                bridge_in, "bridge", 
-                                YF_PROC_CHILD, yf_bridge_proc_exit_cb, log);
-                
-                assert (bridge_proc->pids[i1] != YF_INVALID_PID);
+                yf_bridge_child_proc_spawn(bridge_in, i1, -1, log);
         }
 
         return YF_OK;
@@ -223,4 +239,49 @@ yf_int_t  yf_bridge_pp_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
 
 void yf_bridge_proc_exit_cb(struct  yf_process_s* proc)
 {
+        yf_int_t  child_no, ret;
+        yf_bridge_channel_t* bridge_chl;
+        yf_bridge_in_t* bridge_in = (yf_bridge_in_t*)proc->data;
+        yf_bridge_proc_t* bridge_proc = (yf_bridge_proc_t*)bridge_in->bridge_data;
+
+        for (child_no = 0; child_no < bridge_in->ctx.child_num; ++child_no)
+        {
+                if (proc->pid == bridge_proc->pids[child_no])
+                        break;
+        }
+        assert(child_no < bridge_in->ctx.child_num);
+
+        bridge_chl = bridge_proc->channels + child_no;
+        
+        yf_bridge_channel_uninit(bridge_chl, 1, bridge_proc->plog);
+        yf_close_channel(bridge_chl->channels, bridge_proc->plog);
+
+        yf_log_error(YF_LOG_WARN, bridge_proc->plog, 0, 
+                        "bridge child_%d respawn, exit_err=%d, exit_status=%d", 
+                        child_no, 
+                        yf_proc_exit_err(proc->status), 
+                        yf_proc_exit_code(proc->status));
+
+        yf_bridge_child_proc_spawn(bridge_in, child_no, 
+                        yf_pid_slot(proc->pid), bridge_proc->plog);
+
+        ret = yf_bridge_channel_init(bridge_chl, bridge_in, proc->channel, 
+                                        bridge_proc->evt_driver, 1, 
+                                        child_no, bridge_proc->plog);
+        assert(ret == YF_OK);
+}
+
+
+static void yf_bridge_child_proc_spawn(yf_bridge_in_t* bridge_in
+                , yf_int_t child_no, yf_int_t respawn, yf_log_t* log)
+{
+        yf_bridge_proc_t* bridge_proc = (yf_bridge_proc_t*)bridge_in->bridge_data;
+        
+        bridge_proc->child_no = child_no;
+        bridge_proc->pids[child_no] = yf_spawn_process(
+                        (yf_spawn_proc_pt)bridge_in->ctx.exec_func, 
+                        bridge_in, "bridge", 
+                        respawn<0 ? YF_PROC_CHILD : respawn, yf_bridge_proc_exit_cb, log);
+        
+        assert (bridge_proc->pids[child_no] != YF_INVALID_PID);        
 }

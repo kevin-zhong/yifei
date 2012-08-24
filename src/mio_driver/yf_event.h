@@ -114,13 +114,22 @@ yf_int_t   yf_unregister_tm_evt(yf_tm_evt_t* tm_evt);
 /*
 * singal evt
 * in one processor, you can just register signo with one handler
+* no need to alloc before regist
 */
-yf_int_t  yf_register_singal_evt(yf_evt_driver_t* driver
-                , yf_signal_t* signal, yf_log_t* log);
+typedef struct yf_sig_event_s
+{
+        int            signo;
+        void*        data;
+        yf_log_t*   log;
 
-//signals array with signo=0 end
-yf_int_t  yf_register_singal_evts(yf_evt_driver_t* driver
-                , yf_signal_t* signals, yf_log_t* log);
+        yf_evt_driver_t*  driver;
+
+        void (*sig_evt_handler)(struct yf_sig_event_s* evt);
+}
+yf_sig_event_t;
+
+yf_int_t  yf_register_singal_evt(yf_evt_driver_t* driver
+                , yf_sig_event_t* sig_evt, yf_log_t* log);
 
 yf_int_t  yf_unregister_singal_evt(yf_evt_driver_t* driver
                 , int  signo);
