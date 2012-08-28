@@ -289,6 +289,8 @@ static yf_int_t yf_bridge_bt_attach_res_bridge(yf_bridge_in_t* bridge
 static void yf_bridge_bt_destory(yf_bridge_in_t* bridge, yf_log_t* log)
 {
         yf_bridge_bt_t* bridge_bt = (yf_bridge_bt_t*)bridge->bridge_data;
+        yf_log_debug(YF_LOG_DEBUG, log, 0, "bridge bt destory...");
+        return;
 
         //TODO collect bteads...
         yf_bridge_channel_uninit(&bridge_bt->channels, 1, log);
@@ -322,6 +324,7 @@ static void yf_bridge_bt_task_res_signal(yf_bridge_in_t* bridge
 static yf_int_t yf_bridge_bt_attach_bridge(yf_bridge_in_t* bridge
                 , yf_evt_driver_t* evt_driver, yf_int_t child_no, yf_log_t* log)
 {
+        yf_update_time(NULL, NULL, log);
         return YF_OK;
 }
 
@@ -331,6 +334,9 @@ static void yf_bridge_bt_wait_task(yf_bridge_in_t* bridge
         yf_bridge_bt_t* bridge_bt = (yf_bridge_bt_t*)bridge->bridge_data;
         
         yf_bridge_mutex_wait(&bridge_bt->mutex, log);
+
+        //should update time now after waking up...
+        yf_update_time(NULL, NULL, log);
 }
 
 

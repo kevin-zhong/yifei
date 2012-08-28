@@ -129,8 +129,11 @@ void on_task(yf_bridge_t* bridge
 
         ASSERT_TRUE(yf_send_task_res(bridge, task, len, id, 0, log) == 0);
 
-        if (random() % 4 == 0)
+        if (random() % 4 == 0) 
+        {
+                //printf("recv task_%d\n", id);
                 yf_msleep(yf_mod(random(), 512));
+        }
 }
 
 void on_task_res(yf_bridge_t* bridge
@@ -184,6 +187,9 @@ void on_timeout_handler(struct yf_tm_evt_s* evt, yf_time_t* start)
                 else
                         ++g_task_cnt;
         }
+
+        //printf("after send %d sleep now!!!\n", send_cnt);
+        //yf_sleep(36);
 
         if (++g_send_batch < MAX_SEND_BATCH)
         {

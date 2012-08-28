@@ -34,13 +34,13 @@ yf_int_t  yf_open_channel(yf_socket_t* fds, yf_int_t unblock1, yf_int_t unblock2
         }
         
         on = 1;
-        if (ioctl(fds[0], FIOASYNC, &on) == -1)
+        /*if (ioctl(fds[0], FIOASYNC, &on) == -1)
         {
                 yf_log_error(YF_LOG_ALERT, log, yf_errno,
                              "ioctl(FIOASYNC) failed");
                 yf_close_channel(fds, log);
                 return YF_ERROR;
-        }
+        }*/
 
         if (fcntl(fds[0], F_SETOWN, yf_pid) == -1)
         {
@@ -84,7 +84,7 @@ yf_write_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
                 char           space[CMSG_SPACE(sizeof(int))];
         } cmsg;
 
-        if (ch->fd == -1)
+        if (ch->command != YF_CMD_SEND_FD)
         {
                 msg.msg_control = NULL;
                 msg.msg_controllen = 0;
@@ -104,7 +104,7 @@ yf_write_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
 
 #else
 
-        if (ch->fd == -1)
+        if (ch->command != YF_CMD_SEND_FD)
         {
                 msg.msg_accrights = NULL;
                 msg.msg_accrightslen = 0;

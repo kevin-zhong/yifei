@@ -99,7 +99,9 @@ yf_int_t  yf_bridge_destory(yf_bridge_t* bridge, yf_log_t* log)
 
         bridge_in->destory(bridge_in, log);
 
-        yf_free(bridge_in);
+        //TODO, fix bug here...
+        if (bridge_in->ctx.child_ins_type == YF_BRIDGE_INS_PROC)
+                yf_free(bridge_in);
         return YF_OK;
 }
 
