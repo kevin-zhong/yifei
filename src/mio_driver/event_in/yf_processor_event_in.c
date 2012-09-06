@@ -80,6 +80,7 @@ yf_int_t  yf_free_proc_evt(yf_processor_event_t* proc_evt)
 
         yf_list_del(&evt_tmp->alloc_linker);
 
+        yf_free(evt_tmp);
         return  YF_OK;
 }
 
