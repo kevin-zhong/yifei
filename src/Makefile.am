@@ -26,6 +26,7 @@ libyifei_a_SOURCES=./net/yf_net_imp.c \
 ./base_struct/yf_log.c \
 ./base_struct/yf_array.c \
 ./base_struct/yf_node_pool.c \
+./base_struct/yf_slab_pool.c \
 ./ppc/yf_time.c \
 ./ppc/yf_cpuinfo.c \
 ./ppc/yf_process.c \

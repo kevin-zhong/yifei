@@ -9,6 +9,7 @@
 #define  YF_DECLINED   -5
 #define  YF_ABORT      -6
 
+//1486333899
 #define YF_MAGIC_VAL 0x5897A7CB
 
 #define yf_set_magic(v) ((v) = YF_MAGIC_VAL)
@@ -29,6 +30,7 @@ typedef struct yf_log_s         yf_log_t;
 typedef struct yf_array_s       yf_array_t;
 typedef struct yf_str_s           yf_str_t;
 typedef struct yf_node_pool_s  yf_node_pool_t;
+typedef struct yf_slab_pool_s  yf_slab_pool_t;
 
 #include "yf_string.h"
 #include "yf_mem_pool.h"
@@ -36,6 +38,7 @@ typedef struct yf_node_pool_s  yf_node_pool_t;
 #include "yf_array.h"
 #include "yf_list.h"
 #include "yf_node_pool.h"
+#include "yf_slab_pool.h"
 #include "yf_hash.h"
 #include "yf_rbtree.h"
 #include "yf_bit_op.h"
@@ -44,6 +47,8 @@ typedef struct yf_node_pool_s  yf_node_pool_t;
 
 #define yf_min(a, b)   ((a < b) ? (a) : (b))
 #define yf_max(a, b)  ((a > b) ? (a) : (b))
+
+#define yf_swap(a, b, mid) do {mid = a; a = b; b = mid;} while (0)
 
 #define YF_ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
@@ -65,6 +70,28 @@ typedef struct yf_node_pool_s  yf_node_pool_t;
 
 #define CHECK_RV(line, rv) { if (line) return rv; }
 #define CHECK_OK(line) {yf_int_t __ret = (line); if (__ret != YF_OK) return __ret;}
+
+
+// cmp(key, base+\d)
+// return the pos if insert, will not interupt the order...(infact >= pos)
+#define  yf_bsearch(key, base, num, cmp, pos) do { \
+        size_t start = 0, end = num, mid; \
+        int result; \
+        while (start < end) { \
+                mid = start + ((end - start)>>1); \
+                result = cmp(key, ((base) +  mid)); \
+                if (result < 0) \
+                        end = mid; \
+                else if (result > 0) \
+                        start = mid + 1; \
+                else { \
+                        pos = mid; \
+                        break; \
+                } \
+        } \
+        if (start == end) \
+                pos = start; \
+} while (0)
 
 #endif
 /* _YF_CORE_H_INCLUDED_ */

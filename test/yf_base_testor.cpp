@@ -16,6 +16,30 @@ class BaseTest : public testing::Test
 };
 
 /*
+* test base algo
+*/
+#define TEST_CMP(val, pval) (val - *pval)
+
+TEST_F(BaseTest, BaseAlgo)
+{
+        int  vals[] = {1, 3, 5, 5, 7, 9, 15, 22};
+        int  index;
+
+        int  test_vals[] = {0, 1, 2, 3, 8, 9, 17, 22, 23};
+        int  assert_indexs[] = {0, 0, 1, 1, 5, 5, 7, 7, 8};
+
+        for (int i = 0; i < YF_ARRAY_SIZE(vals); ++i)
+        {
+                printf("test bsearch i=%d\n", i);
+                yf_bsearch(test_vals[i], vals, YF_ARRAY_SIZE(vals), TEST_CMP, index);
+                ASSERT_EQ(index, assert_indexs[i]);
+        }
+
+        yf_bsearch(5, vals, YF_ARRAY_SIZE(vals), TEST_CMP, index);
+        ASSERT_TRUE(index == 2 || index == 3);
+}
+
+/*
 * test bitop
 */
 TEST_F(BaseTest, BitOp)
@@ -489,7 +513,53 @@ TEST_F(BaseTest, NodePool)
 }
 
 
+/*
+* slab pool
+*/
+TEST_F(BaseTest, SlabPool)
+{
+        yf_slab_pool_t  slab_pool;
+        yf_slab_pool_init(&slab_pool, &_log, 4, 8, 15, 20, 32, 64);
+
+        void* data = yf_slab_pool_alloc(&slab_pool, 65, &_log);
+        ASSERT_TRUE(data == NULL);
+
+        typedef std::list<void*> allocted_ct;
+        allocted_ct allocted;
+        int total_allocted = 0;
+
+        for (int i = 0; i < 100000; ++i)
+        {
+                int try_cnts = random() % 16;
+                
+                if (random() % 2 == 0)
+                {
+                        for (int j = 0; j < try_cnts; ++j)
+                        {
+                                if (total_allocted == 0)
+                                        break;
+                                allocted_ct::iterator iter = allocted.begin();
+                                std::advance(iter, random() % total_allocted);
+                                yf_slab_pool_free(&slab_pool, *iter, &_log);
+                                allocted.erase(iter);
+                                --total_allocted;
+                        }
+                }
+                else {
+                        for (int j = 0; j < try_cnts; ++j)
+                        {
+                                void* data = yf_slab_pool_alloc(&slab_pool, random() % 64, &_log);
+                                assert(data);
+                                allocted.push_back(data);
+                                ++total_allocted;
+                        }
+                }
+        }
+}
+
+
 #ifdef TEST_F_INIT
+TEST_F_INIT(BaseTest, BaseAlgo);
 TEST_F_INIT(BaseTest, BitOp);
 TEST_F_INIT(BaseTest, Array);
 TEST_F_INIT(BaseTest, List);
@@ -497,6 +567,7 @@ TEST_F_INIT(BaseTest, Rbtree);
 TEST_F_INIT(BaseTest, StringLog);
 TEST_F_INIT(BaseTest, Hash);
 TEST_F_INIT(BaseTest, NodePool);
+TEST_F_INIT(BaseTest, SlabPool);
 #endif
 
 int main(int argc, char **argv)
