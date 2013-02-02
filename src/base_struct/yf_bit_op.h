@@ -28,12 +28,12 @@
 
 typedef  struct
 {
-        yf_s8_t  indexs[16];
+        yf_s8_t  indexs[17];//last is end tick...
 }
 yf_bit_index_t;
 
 #define  YF_END_INDEX  -1
-#define  yf_index_end(bit_indexs, i) (i == 16 || bit_indexs[i] == YF_END_INDEX)
+#define  yf_index_end(bit_indexs, i) (bit_indexs[i] == YF_END_INDEX)
 
 extern yf_bit_index_t  yf_bit_indexs[65536];
 extern void yf_init_bit_indexs();

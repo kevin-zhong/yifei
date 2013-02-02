@@ -6,5 +6,6 @@
 2，在本地 git init 下
 3，git push （提示错误）
 4，git remote add ori3 git@github.com:kevin-zhong/xxxx.git
-5，git push ori3 master
-6，终于好了
+5，commit 提交部分文件，可以用 git gui（这样第六步就不会因为没有任何文件上传报错）
+6，git push ori3 master
+7，终于好了

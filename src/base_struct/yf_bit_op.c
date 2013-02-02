@@ -24,8 +24,7 @@ void yf_init_bit_indexs()
                         indexs[offset++] = index;
                 }
 
-                if (offset < 16)
-                        indexs[offset] = YF_END_INDEX;
+                indexs[offset] = YF_END_INDEX;
         }
 }
 
