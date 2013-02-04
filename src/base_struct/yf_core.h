@@ -72,6 +72,8 @@ typedef struct yf_slab_pool_s  yf_slab_pool_t;
 #define CHECK_OK(line) {yf_int_t __ret = (line); if (__ret != YF_OK) return __ret;}
 
 
+#define yf_bsearch_cmp(key, pitem) key - *(pitem)
+
 // cmp(key, base+\d)
 // return the pos if insert, will not interupt the order...(infact >= pos)
 #define  yf_bsearch(key, base, num, cmp, pos) do { \
@@ -92,6 +94,8 @@ typedef struct yf_slab_pool_s  yf_slab_pool_t;
         if (start == end) \
                 pos = start; \
 } while (0)
+
+#define yf_sort(base, num, itemsize, cmp) qsort(base, num, itemsize, cmp)
 
 #endif
 /* _YF_CORE_H_INCLUDED_ */

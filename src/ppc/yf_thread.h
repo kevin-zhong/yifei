@@ -105,9 +105,7 @@ void yf_cond_destroy(yf_cond_t *cv, yf_log_t *log);
 yf_int_t yf_cond_wait(yf_cond_t *cv, yf_mutex_t *m, yf_log_t *log);
 yf_int_t yf_cond_signal(yf_cond_t *cv, yf_log_t *log);
 
-
-extern yf_int_t yf_threads_n;
-extern volatile yf_thread_t yf_threads[];
+extern yf_tid_t  yf_main_thread_id;
 
 
 #endif /* _YF_THREAD_H_INCLUDED_ */

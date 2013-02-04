@@ -163,6 +163,8 @@ yf_int_t  yf_bridge_pp_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         yf_int_t i1 = 0;
         yf_int_t  ret;
         yf_task_queue_t* tq;
+
+        CHECK_RV(bridge_in->ctx.exec_func == NULL, YF_ERROR);
         
         size_t  channls_size = sizeof(yf_bridge_channel_t) * bridge_in->ctx.child_num;
         size_t  pid_size = yf_align_mem(sizeof(yf_pid_t) * bridge_in->ctx.child_num);

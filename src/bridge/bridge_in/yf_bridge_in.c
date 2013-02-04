@@ -44,6 +44,9 @@ yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx, yf_log_t* log)
         size_t task_buf_size = yf_align_mem(bridge_ctx->max_task_size);
 
         size_t task_cb_size = yf_node_taken_size(sizeof(yf_task_cb_info_t));
+
+        CHECK_RV(bridge_ctx->child_num > YF_BRIDGE_MAX_CHILD_NUM 
+                        || bridge_ctx->child_num == 0, NULL);
         
         bridge_in = yf_alloc(bridge_size + task_buf_size 
                         + bridge_ctx->max_task_num * task_cb_size);
@@ -85,7 +88,12 @@ yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx, yf_log_t* log)
                 yf_free(bridge_in);
                 return NULL;
         }
-        creator_pfc(bridge_in, log);
+        if (creator_pfc(bridge_in, log) != YF_OK)
+        {
+                yf_log_error(YF_LOG_WARN, log, 0, "bridge init failed");
+                yf_free(bridge_in);
+                return NULL;
+        }
         
         return  (yf_bridge_t*)bridge_in;
 }
@@ -227,6 +235,14 @@ void yf_poll_task_res(yf_bridge_t* bridge, yf_log_t* log)
 /*
 * ------child's api------
 */
+
+yf_int_t  yf_bridge_child_no(yf_bridge_t* bridge, yf_log_t* log)
+{
+        yf_bridge_in_t* bridge_in = (yf_bridge_in_t*)bridge;
+        assert(yf_check_be_magic(bridge_in));
+        return  bridge_in->child_no(bridge_in, log);
+}
+
 //child call this after born and init
 //if in block type, set evt_driver=NULL
 yf_int_t yf_attach_bridge(yf_bridge_t* bridge
@@ -236,6 +252,21 @@ yf_int_t yf_attach_bridge(yf_bridge_t* bridge
         assert(yf_check_be_magic(bridge_in));
 
         yf_int_t  child_no = bridge_in->child_no(bridge_in, log);
+        if (child_no < 0)
+        {
+                if (bridge_in->attach_child_ins == NULL)
+                {
+                        yf_log_error(YF_LOG_WARN, log, 0, "unchild ins, no attach pf, attach fail");
+                        return YF_ERROR;
+                }
+                
+                child_no = bridge_in->attach_child_ins(bridge_in, log);
+                if (child_no < 0)
+                {
+                        yf_log_error(YF_LOG_WARN, log, 0, "attach child ins failed, maybe too many...");
+                        return YF_ERROR;
+                }
+        }
 
         bridge_in->task_handler = handler;
 

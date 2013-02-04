@@ -6,17 +6,27 @@
 yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log);
 yf_int_t  yf_bridge_bt_creator(yf_bridge_in_t* bridge_in, yf_log_t* log);
 
-//TODO, performance...
+static int __cmp_tid(const void *p1, const void *p2)
+{
+        return *((yf_s64_t*)p1) - *((yf_s64_t*)p2);
+}
+
 #define yf_bridge_tno(bridge, bridge_bt, child_no) \
         yf_tid_t tid = yf_thread_self(); \
         yf_int_t i1 = 0; \
-        for ( i1 = 0; i1 <  bridge->ctx.child_num; i1++ ) \
-        { \
-                if (bridge_bt->tids[i1] == tid) {\
+        if (bridge->ctx.exec_func) { \
+                yf_bsearch(tid, bridge_bt->tids, bridge->ctx.child_num, yf_bsearch_cmp, i1); \
+                if (i1 < bridge->ctx.child_num && bridge_bt->tids[i1] == tid) \
                         child_no = i1; \
-                        break; \
+        } else { \
+                for ( i1 = 0; i1 <  bridge->ctx.child_num; i1++ ) \
+                { \
+                        if (bridge_bt->tids[i1] == tid) {\
+                                child_no = i1; \
+                                break; \
+                        } \
                 } \
-        } \
+        }
 
 
 /*
@@ -29,6 +39,7 @@ typedef struct yf_bridge_thr_s
         yf_tid_t* tids;
         yf_task_queue_t** tqs;
         yf_task_queue_t** rtqs;
+        yf_lock_t  attach_lock;
 }
 yf_bridge_thr_t;
 
@@ -112,6 +123,27 @@ static yf_int_t yf_bridge_thr_child_no(yf_bridge_in_t* bridge, yf_log_t* log)
         return child_no;
 }
 
+static yf_int_t yf_bridge_thr_attach_child_ins(yf_bridge_in_t* bridge, yf_log_t* log)
+{
+        yf_bridge_thr_t* bridge_thr = (yf_bridge_thr_t*)bridge->bridge_data;
+        yf_tid_t tid = yf_thread_self();
+        assert(tid);
+        yf_int_t no = -1, i1 = 0;
+        
+        yf_lock(&bridge_thr->attach_lock);
+        for ( i1 = 0; i1 <  bridge->ctx.child_num; i1++ )
+        {
+                if (bridge_thr->tids[i1] == 0)
+                {
+                        bridge_thr->tids[i1] = tid;
+                        no = i1;
+                        break;
+                }
+        }
+        yf_unlock(&bridge_thr->attach_lock);
+        return no;
+}
+
 
 static void yf_bridge_thr_task_res_signal(yf_bridge_in_t* bridge
                 , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log)
@@ -166,6 +198,8 @@ yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         CHECK_RV(bridge_thr==NULL, YF_ERROR);
         yf_memzero(bridge_thr, all_size);
 
+        yf_lock_init(&bridge_thr->attach_lock);
+
         bridge_in->bridge_data = bridge_thr;
 
         bridge_thr->channels = yf_mem_off(bridge_thr, sizeof(yf_bridge_thr_t));
@@ -202,18 +236,28 @@ yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         __yf_bridge_set_ac(bridge_in, child_no, yf_bridge_thr);
         __yf_bridge_set_ac(bridge_in, task_res_signal, yf_bridge_thr);
         __yf_bridge_set_ac(bridge_in, attach_bridge, yf_bridge_thr);
-        __yf_bridge_set_ac(bridge_in, wait_task, yf_bridge_thr);        
+        __yf_bridge_set_ac(bridge_in, wait_task, yf_bridge_thr);
+        __yf_bridge_set_ac(bridge_in, attach_child_ins, yf_bridge_thr);
 
         for ( i1 = 0; i1 < bridge_in->ctx.child_num ; i1++ )
         {
                 //TODO
                 ret = yf_open_channel(bridge_thr->socks + 2*i1, 0, 0, 1, log);
                 assert(ret == YF_OK);
-                
-                ret = yf_create_thread(bridge_thr->tids + i1, 
-                                (yf_thread_exe_pt)bridge_in->ctx.exec_func, 
-                                bridge_in, log);
-                assert(ret == 0);
+
+                if (bridge_in->ctx.exec_func)
+                {
+                        ret = yf_create_thread(bridge_thr->tids + i1, 
+                                        (yf_thread_exe_pt)bridge_in->ctx.exec_func, 
+                                        bridge_in, log);
+                        assert(ret == 0);
+                }
+        }
+
+        if (bridge_in->ctx.exec_func)
+        {
+                yf_sort(bridge_thr->tids, bridge_in->ctx.child_num, 
+                                sizeof(bridge_thr->tids[0]), __cmp_tid);
         }
 
         return YF_OK;        
@@ -411,11 +455,20 @@ yf_int_t  yf_bridge_bt_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         for ( i1 = 0; i1 < bridge_in->ctx.child_num ; i1++ )
         {
                 //TODO
-                ret = yf_create_thread(bridge_bt->tids + i1, 
-                                (yf_thread_exe_pt)bridge_in->ctx.exec_func, 
-                                bridge_in, log);
-                assert(ret == 0);
-        }     
+                if (bridge_in->ctx.exec_func)
+                {
+                        ret = yf_create_thread(bridge_bt->tids + i1, 
+                                        (yf_thread_exe_pt)bridge_in->ctx.exec_func, 
+                                        bridge_in, log);
+                        assert(ret == 0);
+                }
+        }
+        
+        if (bridge_in->ctx.exec_func)
+        {
+                yf_sort(bridge_bt->tids, bridge_in->ctx.child_num, 
+                                sizeof(bridge_bt->tids[0]), __cmp_tid);
+        }        
 
         return YF_OK;
 }

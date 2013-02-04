@@ -69,6 +69,8 @@ typedef struct yf_bridge_in_s
 
         yf_int_t (*child_no)(struct yf_bridge_in_s* bridge
                         , yf_log_t* log);
+        yf_int_t (*attach_child_ins)(struct yf_bridge_in_s* bridge
+                        , yf_log_t* log);
 
         void (*task_res_signal)(struct yf_bridge_in_s* bridge
                         , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);

@@ -134,7 +134,7 @@ void  empty_child_proc(void *data, yf_log_t *log)
         
         yf_setproctitle("yf_proc_testor empty", log);
 
-        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, log, YF_DEFAULT_DRIVER_CB};
+        yf_evt_driver_init_t driver_init = {0, 128, 16, log, YF_DEFAULT_DRIVER_CB};
         yf_evt_driver_t * driver = yf_evt_driver_create(&driver_init);
 
         yf_sig_event_t  sig_evt = {0, data, log, NULL, on_signal};
@@ -142,7 +142,7 @@ void  empty_child_proc(void *data, yf_log_t *log)
         for (yf_signal_t* sig = child_signals; sig->signo; ++sig)
         {
                 sig_evt.signo = sig->signo;
-                yf_register_singal_evt(driver, &sig_evt, log);
+                ASSERT_EQ(YF_OK, yf_register_singal_evt(driver, &sig_evt, log));
         }
         yf_evt_driver_start(driver);
 }
@@ -152,6 +152,8 @@ void  test_channel_func(void *data, yf_log_t *log)
 {
         yf_channel_t  ch;
         yf_blocking(yf_channel);
+
+        yf_setproctitle("yf_proc_testor channel", log);
         
         while(true)
         {
@@ -179,7 +181,10 @@ void  test_channel_func(void *data, yf_log_t *log)
                         
                         ret = yf_write_channel(yf_processes[yf_process_slot+1].channel[0], 
                                         &channel, &_log);
-                        ASSERT_EQ(ret, YF_OK);
+                        
+                        //dont use ASSERT_EQ in child proc, else if fail, will run parent's follow exes...
+                        //ASSERT_EQ(ret, YF_OK);
+                        assert(ret == YF_OK);
                         exit(0);
                 }
                 else if (ch.command == YF_CMD_TERMINATE)
@@ -198,7 +203,7 @@ void  test_channel_func(void *data, yf_log_t *log)
                         channel.command = YF_CMD_DATA;
                         sprintf(channel.data, "2233455566788888875");
                         ret = yf_write_channel(yf_processes[yf_process_slot-1].channel[0], &channel, &_log);
-                        ASSERT_EQ(ret, YF_OK);
+                        assert(ret == YF_OK);
                 }
                 else
                         yf_update_channel(&ch, log);
@@ -296,7 +301,7 @@ TEST_F(ProcTestor, ShareMem)
                 }
         }
 
-        printf("last cnt=%d\n", shm_st->cnt);
+        printf("last cnt=%d, pid=%d\n", shm_st->cnt, getpid());
         ASSERT_EQ(shm_st->cnt, (cnt[0] + cnt[1] - cnt[2] - cnt[3]));
 
         //send signal to empty child proc
@@ -455,11 +460,11 @@ TEST_F(ProcTestor, ProcEvt)
         erase_sigal_mask();
         yf_set_sig_handler(SIGIO, SIG_IGN, &_log);
 
-        yf_evt_driver_init_t driver_init = {0, 128, 16, 1, &_log, YF_DEFAULT_DRIVER_CB};
+        yf_evt_driver_init_t driver_init = {0, 128, 16, &_log, YF_DEFAULT_DRIVER_CB};
         g_proc_driver = yf_evt_driver_create(&driver_init);
 
         yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, on_exe_exit_signal};
-        yf_register_singal_evt(g_proc_driver, &sig_child_evt, &_log);
+        ASSERT_EQ(YF_OK, yf_register_singal_evt(g_proc_driver, &sig_child_evt, &_log));
 
         yf_time_t  time_out = {6, 0};
 

@@ -36,10 +36,16 @@ void  yf_on_signal_in(int signo)
 yf_int_t  yf_register_singal_evt(yf_evt_driver_t* driver
                 , yf_sig_event_t* sig_evt, yf_log_t* log)
 {
+        yf_int_t  signo = sig_evt->signo;
+        
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
         assert(yf_check_be_magic(evt_driver));
+        if (!evt_driver->sig_driver_inited)
+        {
+                yf_log_error(YF_LOG_ERR, log, 0, "sig driver uninitd... signo=%d", signo);
+                return  YF_ERROR;
+        }
         
-        yf_int_t  signo = sig_evt->signo;
         yf_sig_driver_in_t* sig_driver = evt_driver->sig_driver;
         
         if (signo >= YF_ARRAY_SIZE(sig_driver->singal_events))
@@ -70,6 +76,7 @@ yf_int_t  yf_unregister_singal_evt(yf_evt_driver_t* driver
 {
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
         assert(yf_check_be_magic(evt_driver));
+        CHECK_RV(!evt_driver->sig_driver_inited, YF_ERROR);
         
         yf_sig_driver_in_t* sig_driver = evt_driver->sig_driver;
 

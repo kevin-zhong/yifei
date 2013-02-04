@@ -7,7 +7,6 @@ const yf_str_t yf_evt_type_n[] = {yf_str(""), yf_str("read_evt"), yf_str("write_
 
 static yf_lock_t yf_evt_lock = YF_LOCK_INITIALIZER;
 
-static yf_int_t  yf_sig_evt_driver_inited = 0;
 static yf_int_t  yf_evt_driver_cnt = 0;
 
 yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init)
@@ -17,9 +16,7 @@ yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init)
         yf_int_t  chck_ret = 0;
         
         yf_lock(&yf_evt_lock);
-        if (driver_init->include_sig && yf_sig_evt_driver_inited)
-                chck_ret = 1;
-        else if (yf_evt_driver_cnt >= 1)
+        if (yf_evt_driver_cnt >= 1)
         {
 #if !defined (YF_MULTI_EVT_DRIVER)
                 chck_ret = 2;
@@ -59,11 +56,12 @@ yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init)
         }
         evt_driver->tm_driver_inited = 1;
 
-        if (driver_init->include_sig)
+        // if in main thread, then init sig driver...
+        if (yf_thread_self() == yf_main_thread_id)
         {
+                yf_log_debug(YF_LOG_DEBUG, driver_init->log, 0, "main thread, init sig dirver...");
                 evt_driver->sig_driver = yf_init_sig_driver(evt_driver->driver_ctx.log);
                 evt_driver->sig_driver_inited = 1;
-                yf_sig_evt_driver_inited = 1;
         }
 
         if (yf_init_proc_driver(&evt_driver->proc_driver, 
@@ -100,9 +98,8 @@ void yf_evt_driver_destory(yf_evt_driver_t* driver)
         if (evt_driver->tm_driver_inited)
                 yf_destory_tm_driver(&evt_driver->tm_driver);
 
-        if (evt_driver->sig_driver_inited && evt_driver->driver_ctx.include_sig)
+        if (evt_driver->sig_driver_inited)
         {
-                yf_sig_evt_driver_inited = 0;
                 yf_reset_sig_driver(evt_driver->driver_ctx.log);
         }
 
@@ -199,7 +196,7 @@ void yf_evt_driver_start(yf_evt_driver_t* driver)
                 }
 
                 //poll sig event;
-                if (evt_driver->driver_ctx.include_sig)
+                if (evt_driver->sig_driver_inited)
                         evt_driver->sig_driver->poll(evt_driver->sig_driver);
 
                 //poll proc event;

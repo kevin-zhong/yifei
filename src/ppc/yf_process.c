@@ -100,6 +100,7 @@ yf_spawn_process(yf_spawn_proc_pt proc
                         dup2(yf_processes[s].channel[1], STDIN_FILENO);
                 }
                 yf_pid = yf_getpid();
+                yf_main_thread_id = yf_thread_self();
                 yf_close_parent_channels(log);
                 proc(data, log);
                 break;

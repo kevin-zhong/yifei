@@ -4,6 +4,8 @@
 static yf_uint_t nthreads;
 static yf_uint_t max_threads;
 
+yf_tid_t  yf_main_thread_id = 0;
+
 
 static pthread_attr_t thr_attr;
 
@@ -43,6 +45,7 @@ yf_init_threads(int n, size_t size, yf_log_t *log)
         int err;
 
         max_threads = n;
+        yf_main_thread_id = yf_thread_self();
 
         err = pthread_attr_init(&thr_attr);
 

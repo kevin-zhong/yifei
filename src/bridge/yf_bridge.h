@@ -50,6 +50,11 @@ typedef struct yf_bridge_cxt_s
         yf_uint_t  child_poll_type:2;
         yf_uint_t  task_dispatch_type:3;
 
+        //if child proc ins, then exec_func != 0, else can be 0
+        //if not 0, then will execute in child proc/thread autom...
+        //if 0, then no execution happen, just create a channel, you can attach your thread with
+        //exp: cause bridge is single oriented, so if want to send task to parent(must in same proc
+        //though), you can create a bridge, then attach main thread with it
         void* exec_func;
         
         //max = YF_BRIDGE_MAX_CHILD_NUM
@@ -102,6 +107,8 @@ yf_int_t yf_attach_bridge(yf_bridge_t* bridge
 
 //if in block type, call this will block, else will ret quickly with no effects
 void yf_poll_task(yf_bridge_t* bridge, yf_log_t* log);
+
+yf_int_t  yf_bridge_child_no(yf_bridge_t* bridge, yf_log_t* log);
 
 //if len==0, then no res body
 yf_int_t yf_send_task_res(yf_bridge_t* bridge

@@ -57,7 +57,6 @@ typedef  struct
         yf_s32_t  poll_type;
         yf_u32_t nfds;
         yf_u32_t nstimers;
-        yf_int_t include_sig;
 
         yf_log_t*  log;
 
@@ -113,7 +112,7 @@ yf_int_t   yf_unregister_tm_evt(yf_tm_evt_t* tm_evt);
 
 /*
 * singal evt
-* in one processor, you can just register signo with one handler
+* in one proc, just the main thread can regist signal evt...
 * no need to alloc before regist
 */
 typedef struct yf_sig_event_s

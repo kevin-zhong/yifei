@@ -84,7 +84,7 @@ yf_write_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
                 char           space[CMSG_SPACE(sizeof(int))];
         } cmsg;
 
-        if (ch->command != YF_CMD_SEND_FD)
+        if (ch->command != YF_CMD_SEND_FD && ch->command != YF_CMD_OPEN_CHANNEL)
         {
                 msg.msg_control = NULL;
                 msg.msg_controllen = 0;
@@ -104,7 +104,7 @@ yf_write_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
 
 #else
 
-        if (ch->command != YF_CMD_SEND_FD)
+        if (ch->command != YF_CMD_SEND_FD && ch->command != YF_CMD_OPEN_CHANNEL)
         {
                 msg.msg_accrights = NULL;
                 msg.msg_accrightslen = 0;
@@ -203,7 +203,7 @@ yf_read_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
 
 #if defined (HAVE_MSGHDR_MSG_CONTROL)
 
-        if (ch->command == YF_CMD_SEND_FD)
+        if (ch->command == YF_CMD_SEND_FD || ch->command == YF_CMD_OPEN_CHANNEL)
         {
                 if (cmsg.cm.cmsg_len < (yf_sock_len_t)CMSG_LEN(sizeof(int)))
                 {
@@ -234,7 +234,7 @@ yf_read_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
 
 #else
 
-        if (ch->command == YF_CMD_SEND_FD)
+        if (ch->command == YF_CMD_SEND_FD || ch->command == YF_CMD_OPEN_CHANNEL)
         {
                 if (msg.msg_accrightslen != sizeof(int))
                 {
