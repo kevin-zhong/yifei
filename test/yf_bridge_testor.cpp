@@ -13,7 +13,6 @@ extern "C" {
 }
 
 
-yf_pid_t  yf_pid;
 yf_pool_t *_mem_pool;
 yf_log_t _log;
 yf_evt_driver_t* _evt_driver;
@@ -466,7 +465,6 @@ TEST_F_INIT(BridgeTestor, TaskQueue);
 int main(int argc, char **argv)
 {
         srandom(time(NULL));
-        yf_pid = getpid();
         yf_pagesize = getpagesize();
 
         yf_cpuinfo();
@@ -492,7 +490,7 @@ int main(int argc, char **argv)
         ret = yf_init_processs(&_log);
         assert(ret == YF_OK);        
 
-        ret = yf_init_threads(36, 1024 * 1024, &_log);
+        ret = yf_init_threads(36, 1024 * 1024, 1, &_log);
         assert(ret == YF_OK);
 
         yf_set_sig_handler(SIGIO, SIG_IGN, &_log);

@@ -111,6 +111,7 @@ typedef struct yf_channel_s  yf_channel_t;
 #include "yf_channel.h"
 #include "yf_signal.h"
 #include "yf_proc_ctx.h"
+#include "yf_atexit.h"
 
 extern char **environ;
 

@@ -6,7 +6,6 @@ extern "C" {
 #include <mio_driver/yf_event.h>
 }
 
-yf_pid_t yf_pid;
 yf_pool_t *_mem_pool = NULL;
 yf_log_t _log;
 yf_evt_driver_t *_evt_driver = NULL;

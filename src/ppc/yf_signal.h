@@ -32,10 +32,15 @@ typedef struct
 } 
 yf_signal_t;
 
+yf_int_t yf_replace_sig_handler(int signo, signal_ptr sig_handler
+                , signal_ptr* old_handler, yf_log_t *log);
 yf_int_t yf_set_sig_handler(int signo, signal_ptr sig_handler, yf_log_t *log);
 
 yf_int_t yf_os_signal_process(yf_signal_t* signals
                 , char *name, yf_int_t pid, yf_log_t *log);
+
+//kill(getpid(), signo)
+void  yf_kill_exit(yf_int_t signo);
 
 void yf_process_get_status(yf_log_t *log);
 

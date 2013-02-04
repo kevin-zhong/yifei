@@ -40,4 +40,5 @@ libyifei_a_SOURCES=./net/yf_net_imp.c \
 ./ppc/yf_thread.c \
 ./ppc/yf_file.c \
 ./ppc/yf_alloc.c \
-./ppc/yf_proc_ctx.c
+./ppc/yf_proc_ctx.c \
+./ppc/yf_atexit.c

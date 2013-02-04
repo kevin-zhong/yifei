@@ -92,7 +92,7 @@ yf_thread_t;
 
 typedef yf_thread_value_t (*yf_thread_exe_pt)(void *arg);
 
-yf_int_t yf_init_threads(int n, size_t size, yf_log_t *log);
+yf_int_t yf_init_threads(int n, size_t size, yf_int_t sig_maskall, yf_log_t *log);
 yf_err_t yf_create_thread(yf_tid_t * tid,
                           yf_thread_exe_pt func, void *arg, yf_log_t * log);
 

@@ -6,6 +6,7 @@ static void yf_pass_open_channel(yf_log_t *log);
 static void yf_close_parent_channels(yf_log_t *log);
 
 yf_int_t yf_process_slot;
+yf_pid_t yf_pid;
 yf_socket_t yf_channel;
 yf_int_t yf_last_process;
 yf_process_t yf_processes[YF_MAX_PROCESSES];
@@ -14,6 +15,8 @@ yf_int_t
 yf_init_processs(yf_log_t *log)
 {
         size_t i = 0;
+
+        yf_pid = getpid();
 
         yf_process_slot = 0;
         yf_channel = 0;

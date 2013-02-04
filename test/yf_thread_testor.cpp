@@ -24,7 +24,6 @@ extern "C" {
 //mutex[11546+8094+11984+8663]  fast_lock[6614+6983+6767+6534]
 #endif
 
-yf_pid_t  yf_pid;
 yf_pool_t  *_mem_pool;
 yf_log_t    _log;
 
@@ -250,8 +249,7 @@ TEST_F_INIT(ThreadTest, cond);
 int main(int argc, char **argv)
 {
         srandom(time(NULL));
-        yf_pid = getpid();
-
+        
         yf_cpuinfo();
 
         yf_init_bit_indexs();
@@ -266,7 +264,7 @@ int main(int argc, char **argv)
         yf_int_t  ret = yf_strerror_init();
         assert(ret == YF_OK);
 
-        ret = yf_init_threads(36, 1024 * 1024, &_log);
+        ret = yf_init_threads(36, 1024 * 1024, 1, &_log);
         assert(ret == YF_OK);
         
         testing::InitGoogleTest(&argc, (char**)argv);

@@ -3,11 +3,38 @@
 
 static yf_uint_t nthreads;
 static yf_uint_t max_threads;
+static yf_int_t thread_sig_mask = 0;
+static pthread_attr_t thr_attr;
 
 yf_tid_t  yf_main_thread_id = 0;
 
+typedef struct
+{
+        yf_thread_exe_pt  func;
+        void* arg;
+}
+_yf_thread_ctx_t;
 
-static pthread_attr_t thr_attr;
+static yf_thread_value_t _yf_thread_exe_wrapper(void *arg)
+{
+        _yf_thread_ctx_t ctx = *((_yf_thread_ctx_t*)arg);
+        yf_free(arg);
+        
+        if (thread_sig_mask)
+        {
+                sigset_t mask;
+                sigfillset(&mask);
+                
+                //if block this signos, proc will exit unnormly...
+                sigdelset(&mask, SIGSEGV);
+                sigdelset(&mask, SIGFPE);
+                
+                yf_int_t rc = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+                assert(rc == 0);
+        }
+        
+        return ctx.func(arg);
+}
 
 
 yf_err_t
@@ -22,7 +49,10 @@ yf_create_thread(yf_tid_t *tid, yf_thread_exe_pt func, void *arg, yf_log_t *log)
                 return YF_ERROR;
         }
 
-        err = pthread_create(tid, &thr_attr, func, arg);
+        _yf_thread_ctx_t* ctx = (_yf_thread_ctx_t*)yf_alloc(sizeof(_yf_thread_ctx_t));
+        ctx->func = func;
+        ctx->arg = arg;
+        err = pthread_create(tid, &thr_attr, _yf_thread_exe_wrapper, ctx);
 
         if (err != 0)
         {
@@ -40,12 +70,13 @@ yf_create_thread(yf_tid_t *tid, yf_thread_exe_pt func, void *arg, yf_log_t *log)
 
 
 yf_int_t
-yf_init_threads(int n, size_t size, yf_log_t *log)
+yf_init_threads(int n, size_t size, yf_int_t sig_maskall, yf_log_t *log)
 {
         int err;
 
         max_threads = n;
         yf_main_thread_id = yf_thread_self();
+        thread_sig_mask = sig_maskall;
 
         err = pthread_attr_init(&thr_attr);
 

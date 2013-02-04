@@ -1,21 +1,34 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
-yf_int_t yf_set_sig_handler(int signo, signal_ptr sig_handler, yf_log_t *log)
+yf_int_t yf_replace_sig_handler(int signo, signal_ptr sig_handler
+                , signal_ptr* old_handler, yf_log_t *log)
 {
-        struct sigaction sa;
+        struct sigaction sa, sa_old;
         yf_memzero(&sa, sizeof(struct sigaction));
         sa.sa_handler = sig_handler;
 
         sigemptyset(&sa.sa_mask);
+
+#ifdef  SA_RESTART
+        sa.sa_flags |= SA_RESTART;
+#endif
         
-        if (sigaction(signo, &sa, NULL) == -1)
+        if (sigaction(signo, &sa, &sa_old) == -1)
         {
                 yf_log_error(YF_LOG_EMERG, log, yf_errno,
                              "sigaction signo(%d) failed", signo);
                 return YF_ERROR;
         }
-        return  YF_OK;
+
+        if (old_handler)
+                *old_handler = sa_old.sa_handler;
+        return YF_OK;
+}
+
+yf_int_t yf_set_sig_handler(int signo, signal_ptr sig_handler, yf_log_t *log)
+{
+        return  yf_replace_sig_handler(signo, sig_handler, NULL, log);
 }
 
 void
@@ -132,6 +145,18 @@ yf_os_signal_process(yf_signal_t* signals
         }
 
         return 1;
+}
+
+void  yf_kill_exit(yf_int_t signo)
+{
+        struct sigaction sa;
+        yf_memzero(&sa, sizeof(struct sigaction));
+        sa.sa_handler = SIG_DFL;
+
+        sigemptyset(&sa.sa_mask);
+        sigaction(signo, &sa, NULL);
+
+        kill(getpid(), signo);
 }
 
 
