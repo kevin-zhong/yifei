@@ -8,7 +8,7 @@ extern "C" {
 }
 
 yf_pool_t  *_mem_pool;
-yf_log_t    _log;
+yf_log_t*    _log;
 
 class BaseTest : public testing::Test
 {
@@ -339,21 +339,16 @@ TEST_F(BaseTest, StringLog)
         yf_sprintf(out_buf, "%p-%V-%c-%s%N", copy_buf, &str_tmp, buf[0], copy_buf);
         printf("%s", out_buf);
         
-        yf_log_error(YF_LOG_ERR, &_log, YF_ENOSPC, "%p-%V-%c-%s", 
+        yf_log_error(YF_LOG_ERR, _log, YF_ENOSPC, "%p-%V-%c-%s", 
                         copy_buf, &str_tmp, buf[0], copy_buf);
 
-        yf_log_t  file_log;
-        file_log.max_log_size = 4096;
-        file_log.recur_log_num = 5;
-        file_log.switch_log_size = 102400;
-
-        yf_log_open("dir/test.log", &file_log);
+        yf_log_t* file_log = yf_log_open(YF_LOG_DEBUG, 8192, (void*)"dir/test.log");
 
         for (int k = 0; k < 512; ++k)
         {
                 for (int i = 0; i < 68; ++i)
                 {
-                        yf_log_error(YF_LOG_ERR, &file_log, i, "%p-%V-%c-%s", 
+                        yf_log_error(YF_LOG_ERR, file_log, i, "%p-%V-%c-%s", 
                                         copy_buf, &str_tmp, buf[0], copy_buf);
                 }
         }
@@ -429,7 +424,7 @@ TEST_F(BaseTest, NodePool)
         node_pool.nodes_array = (char*)yf_alloc(
                         node_pool.each_taken_size * node_pool.total_num);
 
-        yf_init_node_pool(&node_pool, &_log);
+        yf_init_node_pool(&node_pool, _log);
 
         typedef std::list<void*> ListV;
         ListV allocted_list;
@@ -438,18 +433,18 @@ TEST_F(BaseTest, NodePool)
         
         for (int i = 0; i < 1024; ++i)
         {
-                new_node = yf_alloc_node_from_pool(&node_pool, &_log);
+                new_node = yf_alloc_node_from_pool(&node_pool, _log);
                 ASSERT_TRUE(new_node != NULL);
                 
-                yf_u64_t  id = yf_get_id_by_node(&node_pool, new_node, &_log);
-                cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                yf_u64_t  id = yf_get_id_by_node(&node_pool, new_node, _log);
+                cmp_node = yf_get_node_by_id(&node_pool, id, _log);
                 
                 ASSERT_EQ(new_node, cmp_node);
                 
                 allocted_list.push_back(new_node);
         }
 
-        new_node = yf_alloc_node_from_pool(&node_pool, &_log);
+        new_node = yf_alloc_node_from_pool(&node_pool, _log);
         ASSERT_TRUE(new_node == NULL);
 
         for (int i = 0; i < 16; ++i)
@@ -462,9 +457,9 @@ TEST_F(BaseTest, NodePool)
                         std::advance(iter, random() % allocted_list.size());
 
                         cmp_node = *iter;
-                        yf_u64_t  id = yf_get_id_by_node(&node_pool, cmp_node, &_log);
-                        yf_free_node_to_pool(&node_pool, cmp_node, &_log);
-                        cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                        yf_u64_t  id = yf_get_id_by_node(&node_pool, cmp_node, _log);
+                        yf_free_node_to_pool(&node_pool, cmp_node, _log);
+                        cmp_node = yf_get_node_by_id(&node_pool, id, _log);
                         ASSERT_TRUE(cmp_node == NULL);
                         
                         allocted_list.erase(iter);
@@ -474,19 +469,19 @@ TEST_F(BaseTest, NodePool)
                 
                 for (int j = 0; j < add_num; ++j)
                 {
-                        new_node = yf_alloc_node_from_pool(&node_pool, &_log);
+                        new_node = yf_alloc_node_from_pool(&node_pool, _log);
                         
                         if (allocted_list.size() >= 1024)
                         {
                                 ASSERT_TRUE(new_node == NULL);
-                                yf_log_debug(YF_LOG_DEBUG, &_log, 0, "used out, break now\n");
+                                yf_log_debug(YF_LOG_DEBUG, _log, 0, "used out, break now\n");
                                 break;
                         }
                         ASSERT_TRUE(new_node != NULL);
-                        //yf_log_debug(YF_LOG_DEBUG, &_log, 0, "size=%d\n", allocted_list.size());
+                        //yf_log_debug(YF_LOG_DEBUG, _log, 0, "size=%d\n", allocted_list.size());
                         
-                        yf_u64_t  id = yf_get_id_by_node(&node_pool, new_node, &_log);
-                        cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                        yf_u64_t  id = yf_get_id_by_node(&node_pool, new_node, _log);
+                        cmp_node = yf_get_node_by_id(&node_pool, id, _log);
 
                         ASSERT_EQ(new_node, cmp_node);
                         
@@ -497,14 +492,14 @@ TEST_F(BaseTest, NodePool)
         if (!allocted_list.empty())
         {
                 cmp_node = *allocted_list.begin();
-                yf_u64_t  id = yf_get_id_by_node(&node_pool, cmp_node, &_log);
-                yf_free_node_to_pool(&node_pool, cmp_node, &_log);
+                yf_u64_t  id = yf_get_id_by_node(&node_pool, cmp_node, _log);
+                yf_free_node_to_pool(&node_pool, cmp_node, _log);
                 
-                cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                cmp_node = yf_get_node_by_id(&node_pool, id, _log);
                 ASSERT_TRUE(cmp_node == NULL);
 
-                new_node = yf_alloc_node_from_pool(&node_pool, &_log);
-                cmp_node = yf_get_node_by_id(&node_pool, id, &_log);
+                new_node = yf_alloc_node_from_pool(&node_pool, _log);
+                cmp_node = yf_get_node_by_id(&node_pool, id, _log);
                 ASSERT_TRUE(cmp_node == NULL);
         }
 
@@ -518,9 +513,9 @@ TEST_F(BaseTest, NodePool)
 TEST_F(BaseTest, SlabPool)
 {
         yf_slab_pool_t  slab_pool;
-        yf_slab_pool_init(&slab_pool, &_log, 4, 8, 15, 20, 32, 64);
+        yf_slab_pool_init(&slab_pool, _log, 4, 8, 15, 20, 32, 64);
 
-        void* data = yf_slab_pool_alloc(&slab_pool, 65, &_log);
+        void* data = yf_slab_pool_alloc(&slab_pool, 65, _log);
         ASSERT_TRUE(data == NULL);
 
         typedef std::list<void*> allocted_ct;
@@ -539,7 +534,7 @@ TEST_F(BaseTest, SlabPool)
                                         break;
                                 allocted_ct::iterator iter = allocted.begin();
                                 std::advance(iter, random() % total_allocted);
-                                yf_slab_pool_free(&slab_pool, *iter, &_log);
+                                yf_slab_pool_free(&slab_pool, *iter, _log);
                                 allocted.erase(iter);
                                 --total_allocted;
                         }
@@ -547,7 +542,7 @@ TEST_F(BaseTest, SlabPool)
                 else {
                         for (int j = 0; j < try_cnts; ++j)
                         {
-                                void* data = yf_slab_pool_alloc(&slab_pool, random() % 64, &_log);
+                                void* data = yf_slab_pool_alloc(&slab_pool, random() % 64, _log);
                                 assert(data);
                                 allocted.push_back(data);
                                 ++total_allocted;
@@ -576,13 +571,12 @@ int main(int argc, char **argv)
         yf_init_bit_indexs();
 
         yf_cpuinfo();
+        
+        _log = yf_log_open(YF_LOG_DEBUG, 8192, NULL);
+        _mem_pool = yf_create_pool(1024000, _log);
 
-        _log.max_log_size = 8192;
-        yf_log_open(NULL, &_log);
-        _mem_pool = yf_create_pool(1024000, &_log);
-
-        yf_init_time(&_log);
-        yf_update_time(NULL, NULL, &_log);
+        yf_init_time(_log);
+        yf_update_time(NULL, NULL, _log);
 
         yf_int_t  ret = yf_strerror_init();
         assert(ret == YF_OK);

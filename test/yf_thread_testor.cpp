@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 yf_pool_t  *_mem_pool;
-yf_log_t    _log;
+yf_log_t*    _log;
 
 class ThreadTest : public testing::Test
 {
@@ -40,16 +40,16 @@ yf_thread_value_t thread_func1(void* arg)
         for (int i = 0; i < cnt; ++i)
         {
                 usleep(5);
-                yf_log_error(YF_LOG_DEBUG, &_log, i, "thread run %d", cnt);
+                yf_log_error(YF_LOG_DEBUG, _log, i, "thread run %d", cnt);
         }
 }
 
 TEST_F(ThreadTest, thread)
 {
         yf_tid_t  tid, tid2, tid3;
-        yf_create_thread(&tid, thread_func1, (void*)150, &_log);
-        yf_create_thread(&tid2, thread_func1, (void*)200, &_log);
-        yf_create_thread(&tid3, thread_func1, (void*)150, &_log);
+        yf_create_thread(&tid, thread_func1, (void*)150, _log);
+        yf_create_thread(&tid2, thread_func1, (void*)200, _log);
+        yf_create_thread(&tid3, thread_func1, (void*)150, _log);
 
         void* ptr = NULL;
         yf_thread_join(tid, &ptr);
@@ -115,10 +115,10 @@ TEST_F(ThreadTest, fast_lock)
         }
         
         yf_tid_t  tid[4];
-        yf_create_thread(tid, add, test_ctx, &_log);
-        yf_create_thread(tid + 2, sub, test_ctx + 2, &_log);
-        yf_create_thread(tid + 1, add, test_ctx + 1, &_log);
-        yf_create_thread(tid + 3, sub, test_ctx + 3, &_log);
+        yf_create_thread(tid, add, test_ctx, _log);
+        yf_create_thread(tid + 2, sub, test_ctx + 2, _log);
+        yf_create_thread(tid + 1, add, test_ctx + 1, _log);
+        yf_create_thread(tid + 3, sub, test_ctx + 3, _log);
 
         void* ptr = NULL;
         for (size_t i = 0; i < sizeof(tid) / sizeof(yf_tid_t); ++i)
@@ -150,14 +150,14 @@ yf_thread_value_t  produce(void* arg)
 #define  SEND_CONTENT(_c) \
                 yf_mlock(cond_ctx->_mutex);\
                 if (cond_ctx->_content.size() >= FULL_SIZE) { \
-                        yf_log_debug0(YF_LOG_DEBUG, &_log, 0, "queue full, wait");\
-                        yf_cond_wait(cond_ctx->_unfull_cond, cond_ctx->_mutex, &_log); \
+                        yf_log_debug0(YF_LOG_DEBUG, _log, 0, "queue full, wait");\
+                        yf_cond_wait(cond_ctx->_unfull_cond, cond_ctx->_mutex, _log); \
                 } \
                 cond_ctx->_content.push_back(_c); \
-                yf_log_debug1(YF_LOG_DEBUG, &_log, 0, "produce[ %d ]", _c); \
+                yf_log_debug1(YF_LOG_DEBUG, _log, 0, "produce[ %d ]", _c); \
                 if (cond_ctx->_consume_wait_size) {\
-                        yf_log_debug0(YF_LOG_DEBUG, &_log, 0, "have consume wait, signal"); \
-                        yf_cond_signal(cond_ctx->_unempty_cond, &_log); \
+                        yf_log_debug0(YF_LOG_DEBUG, _log, 0, "have consume wait, signal"); \
+                        yf_cond_signal(cond_ctx->_unempty_cond, _log); \
                 } \
                 yf_munlock(cond_ctx->_mutex);
 
@@ -185,25 +185,25 @@ yf_thread_value_t  consume(void* arg)
                 yf_mlock(cond_ctx->_mutex);
                 while (cond_ctx->_content.empty())//note, this must circ, else will core..
                 {
-                        yf_log_debug0(YF_LOG_DEBUG, &_log, 0, "queue empty, wait");
+                        yf_log_debug0(YF_LOG_DEBUG, _log, 0, "queue empty, wait");
                         cond_ctx->_consume_wait_size++;
-                        yf_cond_wait(cond_ctx->_unempty_cond, cond_ctx->_mutex, &_log);
+                        yf_cond_wait(cond_ctx->_unempty_cond, cond_ctx->_mutex, _log);
                         cond_ctx->_consume_wait_size--;
                 }
                 int  content = cond_ctx->_content.front();
                 cond_ctx->_content.pop_front();
-                yf_log_debug1(YF_LOG_DEBUG, &_log, 0, "consume[ %d ]", content);
+                yf_log_debug1(YF_LOG_DEBUG, _log, 0, "consume[ %d ]", content);
 
                 if (cond_ctx->_content.size() == FULL_SIZE - 1)
                 {
-                        yf_log_debug0(YF_LOG_DEBUG, &_log, 0, "queue not full, signal");
-                        yf_cond_signal(cond_ctx->_unfull_cond, &_log);
+                        yf_log_debug0(YF_LOG_DEBUG, _log, 0, "queue not full, signal");
+                        yf_cond_signal(cond_ctx->_unfull_cond, _log);
                 }
                 yf_munlock(cond_ctx->_mutex);
 
                 if (content == 0)
                 {
-                        yf_log_debug0(YF_LOG_DEBUG, &_log, 0, "end thread now");
+                        yf_log_debug0(YF_LOG_DEBUG, _log, 0, "end thread now");
                         break;
                 }
 
@@ -216,27 +216,27 @@ TEST_F(ThreadTest, cond)
         yf_tid_t  tid[4];
         
         CondCtx  cond_ctx;
-        cond_ctx._mutex = yf_mutex_init(&_log);
-        cond_ctx._unempty_cond = yf_cond_init(&_log);
-        cond_ctx._unfull_cond = yf_cond_init(&_log);
+        cond_ctx._mutex = yf_mutex_init(_log);
+        cond_ctx._unempty_cond = yf_cond_init(_log);
+        cond_ctx._unfull_cond = yf_cond_init(_log);
         cond_ctx._thread_size = (int)(sizeof(tid) / sizeof(yf_tid_t)) - 1;
         cond_ctx._consume_wait_size = 0;
         
-        yf_create_thread(tid, produce, &cond_ctx, &_log);
+        yf_create_thread(tid, produce, &cond_ctx, _log);
         
         for (size_t i = 1; i < sizeof(tid) / sizeof(yf_tid_t); ++i)
         {
                 printf("create thread i=%d\n", i);
-                yf_create_thread(tid + i, consume, &cond_ctx, &_log);
+                yf_create_thread(tid + i, consume, &cond_ctx, _log);
         }
 
         void* ptr = NULL;
         for (size_t i = 0; i < sizeof(tid) / sizeof(yf_tid_t); ++i)
                 yf_thread_join(tid[i], &ptr);
 
-        yf_mutex_destroy(cond_ctx._mutex, &_log);
-        yf_cond_destroy(cond_ctx._unempty_cond, &_log);
-        yf_cond_destroy(cond_ctx._unfull_cond, &_log);
+        yf_mutex_destroy(cond_ctx._mutex, _log);
+        yf_cond_destroy(cond_ctx._unempty_cond, _log);
+        yf_cond_destroy(cond_ctx._unfull_cond, _log);
 }
 
 
@@ -254,17 +254,16 @@ int main(int argc, char **argv)
 
         yf_init_bit_indexs();
 
-        _log.max_log_size = 8192;
-        yf_log_open(NULL, &_log);
-        _mem_pool = yf_create_pool(1024000, &_log);
+        _log = yf_log_open(YF_LOG_DEBUG, 8192, NULL);
+        _mem_pool = yf_create_pool(1024000, _log);
 
-        yf_init_time(&_log);
-        yf_update_time(NULL, NULL, &_log);
+        yf_init_time(_log);
+        yf_update_time(NULL, NULL, _log);
 
         yf_int_t  ret = yf_strerror_init();
         assert(ret == YF_OK);
 
-        ret = yf_init_threads(36, 1024 * 1024, 1, &_log);
+        ret = yf_init_threads(36, 1024 * 1024, 1, _log);
         assert(ret == YF_OK);
         
         testing::InitGoogleTest(&argc, (char**)argv);

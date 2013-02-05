@@ -18,13 +18,10 @@
 struct yf_log_s
 {
         yf_uint_t  log_level;
-        yf_file_t*  file;
-        char*        log_buf;
-        yf_uint_t  max_log_size;
-        yf_uint_t  switch_log_size;
-        yf_uint_t  recur_log_num;
-        yf_uint_t  stat_file_interval;
+        yf_uint_t  each_log_max_len;
+        
         yf_lock_t  lock;
+        void* log_ctx;
 };
 
 
@@ -156,11 +153,37 @@ void  yf_log_debug_core(yf_log_t *log, yf_err_t err, const char *fmt, ...);
 
 /*********************************/
 
-yf_log_t *yf_log_open(char *path, yf_log_t* yf_log);
+yf_log_t *yf_log_open(yf_uint_t log_level, yf_u32_t log_max_len, void* init_ctx);
 
-yf_int_t  yf_log_rotate(yf_log_t* yf_log);
 void  yf_log_close(yf_log_t* yf_log);
 char *yf_log_errno(char *buf, char *last, yf_err_t err);
+
+
+//actions for ext...
+typedef struct yf_log_msg_s
+{
+        char* log_buf;
+        char* msg_buf;
+        yf_uint_t  log_len;
+        yf_uint_t  msg_len;
+        yf_uint_t  log_level;
+        yf_err_t   err;
+}
+yf_log_msg_t;
+
+
+struct yf_log_actions_s
+{
+        yf_log_t* (*log_open)(yf_uint_t log_level, yf_u32_t log_max_len, void* init_ctx);
+        void (*log_close)(yf_log_t* yf_log);
+        
+        //buf len must>=each_log_max_len
+        char* (*alloc_buf)(yf_log_t* yf_log);
+
+        void (*log_msg)(yf_log_t* yf_log, yf_log_msg_t* logmsg);
+};
+
+extern yf_log_actions_t  yf_log_actions;
 
 
 #endif

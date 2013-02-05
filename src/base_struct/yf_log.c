@@ -13,6 +13,89 @@ static yf_str_t err_levels[] = {
         yf_str("debug")
 };
 
+typedef struct
+{
+        yf_file_t*  file;
+        char*        log_buf;        
+}
+_log_default_ctx_t;
+
+static yf_log_t* _log_default_open(yf_uint_t log_level, yf_u32_t log_max_len, void* init_ctx)
+{
+        char* path = init_ctx;
+        yf_u32_t  path_len = 0;
+        if (path)
+                path_len = yf_strlen(path);
+        
+        yf_u32_t head_size = yf_align_mem(sizeof(yf_log_t));
+        yf_u32_t ctx_size = yf_align_mem(sizeof(_log_default_ctx_t));
+        yf_u32_t all_size = head_size + ctx_size 
+                               + sizeof(yf_file_t) + log_max_len + path_len;
+        
+        yf_log_t* log = (yf_log_t*)yf_alloc(all_size);
+        CHECK_RV(log==NULL, NULL);
+
+        _log_default_ctx_t* log_ctx = yf_mem_off(log, head_size);
+        log->log_ctx = log_ctx;
+        log_ctx->file = yf_mem_off(log_ctx, ctx_size);
+        log_ctx->log_buf = yf_mem_off(log_ctx->file, sizeof(yf_file_t));
+        
+        if (path == NULL)
+        {
+                log_ctx->file->fd = yf_stderr;
+                return log;
+        }
+
+        log_ctx->file->name.data = log_ctx->log_buf + log_max_len;
+        log_ctx->file->name.len = path_len;
+        yf_memcpy(log_ctx->file->name.data, path, path_len);
+        
+        log_ctx->file->fd = yf_open_file(path, YF_FILE_APPEND, 
+                        YF_FILE_CREATE_OR_OPEN, 
+                        YF_FILE_DEFAULT_ACCESS);
+
+        if (log_ctx->file->fd == YF_INVALID_FILE) 
+        {
+                log_ctx->file->fd = yf_stderr;
+        }
+        return  log;
+}
+
+static void _log_default_log_close(yf_log_t* yf_log)
+{
+        _log_default_ctx_t* log_ctx = yf_log->log_ctx;
+        
+        if (log_ctx->file->fd == YF_INVALID_FILE
+                || log_ctx->file->fd == yf_stderr)
+        {
+                yf_close_file(log_ctx->file->fd);
+                return;
+        }
+        log_ctx->file->fd = YF_INVALID_FILE;
+        yf_free(yf_log);
+}
+
+static char* _log_default_alloc_buf(yf_log_t* yf_log)
+{
+        _log_default_ctx_t* log_ctx = yf_log->log_ctx;
+        return log_ctx->log_buf;
+}
+
+static void _log_default_log_msg(yf_log_t* yf_log, yf_log_msg_t* logmsg)
+{
+        _log_default_ctx_t* log_ctx = yf_log->log_ctx;
+        //printf("log_len=%d\n", logmsg->log_len);
+        yf_write_fd(log_ctx->file->fd, logmsg->log_buf, logmsg->log_len);
+}
+
+yf_log_actions_t  yf_log_actions = {
+        _log_default_open, 
+        _log_default_log_close, 
+        _log_default_alloc_buf, 
+        _log_default_log_msg
+};
+
+
 #if (YF_HAVE_VARIADIC_MACROS)
 void
 yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
@@ -26,47 +109,46 @@ yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
 #if (YF_HAVE_VARIADIC_MACROS)
         va_list args;
 #endif
-        char *p, *last, *msg;
-        char *errstr = log->log_buf;
+        char *p, *last;
+        yf_log_msg_t  log_msg;
+        char *errstr = yf_log_actions.alloc_buf(log);
 
-        if (log->file == NULL || log->file->fd == YF_INVALID_FILE)
-        {
+        if (errstr == NULL)
                 return;
-        }
+
+        log_msg.err = err;
+        log_msg.log_buf = errstr;
+        log_msg.log_level = level;
 
         yf_lock(&log->lock);
 
-        last = errstr + log->max_log_size;
+        last = errstr + log->each_log_max_len;
 
-        yf_memcpy(errstr, yf_log_time.data,
-                  yf_log_time.len);
+        yf_memcpy(errstr, yf_log_time.data, yf_log_time.len);
 
         p = errstr + yf_log_time.len;
 
-        p = yf_snprintf(p, log->max_log_size, " [%s:%d][%V]", 
+        p = yf_snprintf(p, last - p, " [%s:%d][%V]", 
                         _file_, _line_, 
                         &err_levels[level]);
 
         /* pid#tid */
-        p = yf_snprintf(p, log->max_log_size, "[%P#" YF_TID_T_FMT "]: ",
+        p = yf_snprintf(p, last - p, "[%P#" YF_TID_T_FMT "]: ",
                         yf_log_pid, yf_log_tid);
 
-        msg = p;
+        log_msg.msg_buf = p;
 
 #if (YF_HAVE_VARIADIC_MACROS)
-
         va_start(args, fmt);
         p = yf_vslprintf(p, last, fmt, args);
         va_end(args);
-
 #else
-
         p = yf_vslprintf(p, last, fmt, args);
-
 #endif
 
-        if (err)
-        {
+        log_msg.msg_len = p - log_msg.msg_buf;
+
+        if (err) {
                 p = yf_log_errno(p, last, err);
         }
 
@@ -76,23 +158,10 @@ yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
         }
 
         yf_linefeed(p);
+        log_msg.log_len = p - log_msg.log_buf;
 
-        (void)yf_write_fd(log->file->fd, errstr, p - errstr);
-
-        if (log->stat_file_interval++ >= 512)
-        {
-                log->stat_file_interval = 0;
-                if (log->file->fd != yf_stderr)
-                {
-                        struct stat  file_stat;
-                        if (fstat(log->file->fd, &file_stat) == 0)
-                        {
-                                if (yf_file_size(&file_stat) >= log->switch_log_size)
-                                        yf_log_rotate(log);
-                        }
-                }
-        }
-
+        yf_log_actions.log_msg(log, &log_msg);
+        
         yf_unlock(&log->lock);
 }
 
@@ -144,48 +213,20 @@ yf_log_errno(char *buf, char *last, yf_err_t err)
 }
 
 
-yf_log_t *yf_log_open(char *path, yf_log_t* yf_log)
+yf_log_t *yf_log_open(yf_uint_t log_level, yf_u32_t log_max_len, void* init_ctx)
 {
-        yf_log->log_level = YF_LOG_DEBUG;
-        yf_log->stat_file_interval = 0;
-        yf_lock_init(&yf_log->lock);
-        
-        if (path == NULL)
+        if (log_max_len < 1024)
         {
-                yf_log->file = yf_alloc(sizeof(yf_file_t) + yf_log->max_log_size);
-                if (yf_log->file == NULL)
-                        return NULL;
-
-                yf_log->file->fd = yf_stderr;
-                yf_log->log_buf = (char*)yf_log->file + sizeof(yf_file_t);
-                return  yf_log;
+                fprintf(stderr, "log cache size too small, log open failed...");
+                return NULL;
         }
         
-        size_t  path_len = yf_strlen(path);
-        yf_log->file = yf_alloc(sizeof(yf_file_t) + yf_log->max_log_size + path_len);
-        if (yf_log->file == NULL)
-                return NULL;
+        yf_log_t* yf_log = yf_log_actions.log_open(log_level, log_max_len, init_ctx);
+        CHECK_RV(yf_log == NULL, NULL);
         
-        yf_log->file->fd = yf_stderr;
-
-        yf_log->log_buf = (char*)yf_log->file + sizeof(yf_file_t);
-
-        yf_log->file->name.data = yf_log->log_buf + yf_log->max_log_size;
-        yf_log->file->name.len = path_len;
-        yf_memcpy(yf_log->file->name.data, path, path_len);
-        
-        yf_log->file->fd = yf_open_file(path, YF_FILE_APPEND, 
-                        YF_FILE_CREATE_OR_OPEN, 
-                        YF_FILE_DEFAULT_ACCESS);
-
-        if (yf_log->file->fd == YF_INVALID_FILE) 
-        {
-                yf_log->file->fd = yf_stderr;
-                
-                yf_log_error(YF_LOG_ERR, yf_log, yf_errno, 
-                                "[alert] could not open error log file: "
-                                yf_open_file_n " \"%s\" failed", path);
-        }        
+        yf_log->log_level = log_level;
+        yf_log->each_log_max_len = log_max_len;
+        yf_lock_init(&yf_log->lock);
 
         return  yf_log;
 }
@@ -194,80 +235,7 @@ yf_log_t *yf_log_open(char *path, yf_log_t* yf_log)
 void  yf_log_close(yf_log_t* yf_log)
 {
         yf_lock_destory(&yf_log->lock);
-        
-        if (yf_log->file->fd == YF_INVALID_FILE
-                || yf_log->file->fd == yf_stderr)
-        {
-                yf_free(yf_log->file);
-                return;
-        }
-
-        yf_close_file(yf_log->file->fd);
-        yf_log->file->fd = YF_INVALID_FILE;
-        yf_free(yf_log->file);
+        yf_log_actions.log_close(yf_log);
 }
 
-
-yf_int_t  yf_log_rotate(yf_log_t* yf_log)
-{
-        if (yf_log->file->fd == YF_INVALID_FILE)
-                return YF_ERROR;
-
-        if (yf_log->file->fd == yf_stderr 
-                || yf_log->recur_log_num <= 1)
-                return  YF_OK;
-
-        char path_src[YF_MAX_PATH + 16], path_dst[YF_MAX_PATH + 16];
-        char* path_src_end = yf_cpymem(path_src, 
-                        yf_log->file->name.data, yf_log->file->name.len);
-        char* path_dst_end = yf_cpymem(path_dst, 
-                        yf_log->file->name.data, yf_log->file->name.len);        
-        
-        yf_sprintf(path_src_end, ".%d", yf_log->recur_log_num - 1);
-        if (yf_delete_file(path_src) != 0 && yf_errno != YF_ENOPATH)
-        {
-                yf_log_error(YF_LOG_WARN, yf_log, yf_errno, 
-                                "delete file path failed, path=%s", 
-                                path_src);
-                return  YF_ERROR;
-        }
-
-        yf_int_t  i;
-        for (i = yf_log->recur_log_num - 2; i >= 0; --i)
-        {
-                if (i)
-                        yf_sprintf(path_src_end, ".%d", i);
-                else
-                        *path_src_end = 0;
-
-                yf_sprintf(path_dst_end, ".%d", i + 1);
-
-                if (yf_rename_file(path_src, path_dst) != 0 && yf_errno != YF_ENOPATH)
-                {
-                        yf_log_error(YF_LOG_WARN, yf_log, yf_errno, 
-                                        "rename file path failed, path_src=%s", 
-                                        path_src);
-                        return  YF_ERROR;
-                }
-        }
-
-        yf_close_file(yf_log->file->fd);
-        yf_log->file->fd = YF_INVALID_FILE;
-
-        *path_src_end = 0;
-        yf_log->file->fd = yf_open_file(path_src, YF_FILE_APPEND, 
-                        YF_FILE_CREATE_OR_OPEN, 
-                        YF_FILE_DEFAULT_ACCESS);
-
-        if (yf_log->file->fd == YF_INVALID_FILE) 
-        {
-                yf_log->file->fd = yf_stderr;
-                
-                yf_log_error(YF_LOG_ERR, yf_log, yf_errno, 
-                                "[alert] could not open error log file: "
-                                yf_open_file_n " \"%s\" failed", path_src);
-        }                
-
-        return  YF_OK;
-}
 

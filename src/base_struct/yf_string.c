@@ -166,7 +166,7 @@ yf_vslprintf(char *buf, char *last, const char *fmt, va_list args)
         int d;
         double f, scale;
         size_t len, slen;
-        yf_s64_t i64;
+        yf_s64_t i64 = 0;
         yf_u64_t ui64;
         yf_uint_t width, sign, hex, max_width, frac_width, n;
         yf_str_t *v;

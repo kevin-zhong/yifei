@@ -8,7 +8,7 @@ extern "C" {
 }
 
 yf_pool_t *_mem_pool;
-yf_log_t _log;
+yf_log_t* _log;
 
 class ProcTestor : public testing::Test
 {
@@ -178,7 +178,7 @@ void  test_channel_func(void *data, yf_log_t *log)
                         channel.command = YF_CMD_TERMINATE;
                         
                         ret = yf_write_channel(yf_processes[yf_process_slot+1].channel[0], 
-                                        &channel, &_log);
+                                        &channel, _log);
                         
                         //dont use ASSERT_EQ in child proc, else if fail, will run parent's follow exes...
                         //ASSERT_EQ(ret, YF_OK);
@@ -200,7 +200,7 @@ void  test_channel_func(void *data, yf_log_t *log)
                         yf_channel_t  channel = {0};
                         channel.command = YF_CMD_DATA;
                         sprintf(channel.data, "2233455566788888875");
-                        ret = yf_write_channel(yf_processes[yf_process_slot-1].channel[0], &channel, &_log);
+                        ret = yf_write_channel(yf_processes[yf_process_slot-1].channel[0], &channel, _log);
                         assert(ret == YF_OK);
                 }
                 else
@@ -225,7 +225,7 @@ void on_child_exit_cb(struct  yf_process_s* proc)
                         proc->channel[1]);
         
         proc->pid = -1;
-        yf_close_channel(proc->channel, &_log);
+        yf_close_channel(proc->channel, _log);
         ++exit_cnt;
 }
 
@@ -234,15 +234,15 @@ TEST_F(ProcTestor, ShareMem)
 {
         exit_cnt = 0;
 
-        yf_set_sig_handler(SIGCHLD, on_child_process_exit, &_log);
-        yf_set_sig_handler(SIGIO, SIG_IGN, &_log);
+        yf_set_sig_handler(SIGCHLD, on_child_process_exit, _log);
+        yf_set_sig_handler(SIGIO, SIG_IGN, _log);
         signal_mask();
         
         yf_shm_t shm;
 
         shm.size = 4096;
         yf_str_set(&shm.name, "test_shm");
-        shm.log = &_log;
+        shm.log = _log;
 
         yf_int_t ret = yf_shm_alloc(&shm);
         ASSERT_EQ(ret, YF_OK);
@@ -257,9 +257,7 @@ TEST_F(ProcTestor, ShareMem)
         TestCtx test_ctx;
         test_ctx.test_ma = shm_st;
 
-        yf_log_t *proc_log = (yf_log_t *)yf_align_ptr(shm.addr + sizeof(ShmSt), YF_ALIGNMENT);
-        proc_log->max_log_size = 1024 * 1024 * 1024;
-        ASSERT_EQ(yf_log_open("dir/proc.log", proc_log), proc_log);
+        yf_log_t *proc_log = yf_log_open(YF_LOG_DEBUG, 8192, (void*)"dir/proc.log");
 
         yf_pid_t active_pid = yf_spawn_process(test_channel_func,
                                NULL, "test_channel_func", YF_PROC_CHILD, 
@@ -293,9 +291,9 @@ TEST_F(ProcTestor, ShareMem)
                 sigsuspend(&set);
                 if (g_child_flag)
                 {
-                        yf_process_get_status(&_log);
+                        yf_process_get_status(_log);
                         g_child_flag = 0;
-                        yf_log_debug1(YF_LOG_DEBUG, &_log, 0, "exit child process = %d", exit_cnt);
+                        yf_log_debug1(YF_LOG_DEBUG, _log, 0, "exit child process = %d", exit_cnt);
                 }
         }
 
@@ -303,17 +301,17 @@ TEST_F(ProcTestor, ShareMem)
         ASSERT_EQ(shm_st->cnt, (cnt[0] + cnt[1] - cnt[2] - cnt[3]));
 
         //send signal to empty child proc
-        yf_os_signal_process(child_signals, "reload", signal_pid, &_log);
-        yf_os_signal_process(child_signals, "stop_accept", signal_pid, &_log);
+        yf_os_signal_process(child_signals, "reload", signal_pid, _log);
+        yf_os_signal_process(child_signals, "stop_accept", signal_pid, _log);
         yf_sleep(1);//must
-        yf_os_signal_process(child_signals, "quit", signal_pid, &_log);
+        yf_os_signal_process(child_signals, "quit", signal_pid, _log);
 
         //send cmd by channel to child proc, and old child -> new child
         yf_channel_t  channel = {0};
         
         channel.command = YF_CMD_DATA;
         sprintf(channel.data, "gfdgfds564fdaefafd");
-        ret = yf_write_channel(yf_processes[0].channel[0], &channel, &_log);
+        ret = yf_write_channel(yf_processes[0].channel[0], &channel, _log);
         ASSERT_EQ(ret, YF_OK);
 
         //send file fd to child proc
@@ -324,7 +322,7 @@ TEST_F(ProcTestor, ShareMem)
                         YF_FILE_DEFAULT_ACCESS);
         channel.fd = fd_send;
         assert(fd_send >= 0);
-        ret = yf_write_channel(yf_processes[1].channel[0], &channel, &_log);
+        ret = yf_write_channel(yf_processes[1].channel[0], &channel, _log);
         ASSERT_EQ(ret, YF_OK);
 
         //close test 1's fds
@@ -336,7 +334,7 @@ TEST_F(ProcTestor, ShareMem)
 
         yf_memzero(&channel, sizeof(channel));
         channel.command = YF_CMD_QUIT;
-        ret = yf_write_channel(yf_processes[0].channel[0], &channel, &_log);
+        ret = yf_write_channel(yf_processes[0].channel[0], &channel, _log);
         ASSERT_EQ(ret, YF_OK);
 
         exit_cnt = 0;
@@ -345,9 +343,9 @@ TEST_F(ProcTestor, ShareMem)
                 sigsuspend(&set);
                 if (g_child_flag)
                 {
-                        yf_process_get_status(&_log);
+                        yf_process_get_status(_log);
                         g_child_flag = 0;
-                        yf_log_debug1(YF_LOG_DEBUG, &_log, 0, "exit child process = %d", exit_cnt);
+                        yf_log_debug1(YF_LOG_DEBUG, _log, 0, "exit child process = %d", exit_cnt);
                 }
         }
 
@@ -456,13 +454,13 @@ TEST_F(ProcTestor, ProcEvt)
 {
         exit_cnt = 0;
         erase_sigal_mask();
-        yf_set_sig_handler(SIGIO, SIG_IGN, &_log);
+        yf_set_sig_handler(SIGIO, SIG_IGN, _log);
 
-        yf_evt_driver_init_t driver_init = {0, 128, 16, &_log, YF_DEFAULT_DRIVER_CB};
+        yf_evt_driver_init_t driver_init = {0, 128, 16, _log, YF_DEFAULT_DRIVER_CB};
         g_proc_driver = yf_evt_driver_create(&driver_init);
 
         yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, on_exe_exit_signal};
-        ASSERT_EQ(YF_OK, yf_register_singal_evt(g_proc_driver, &sig_child_evt, &_log));
+        ASSERT_EQ(YF_OK, yf_register_singal_evt(g_proc_driver, &sig_child_evt, _log));
 
         yf_time_t  time_out = {6, 0};
 
@@ -471,7 +469,7 @@ TEST_F(ProcTestor, ProcEvt)
                 yf_exec_ctx_t* tex_ctx = exec_ctx + i;
                 
                 yf_processor_event_t* proc_evt;
-                yf_int_t ret = yf_alloc_proc_evt(g_proc_driver, &proc_evt, &_log);
+                yf_int_t ret = yf_alloc_proc_evt(g_proc_driver, &proc_evt, _log);
                 
                 proc_evt->pool = _mem_pool;
                 proc_evt->exec_ctx = *tex_ctx;
@@ -505,32 +503,31 @@ int main(int argc, char **argv)
 
         yf_cpuinfo();
 
-        _log.max_log_size = 8192;
-        yf_log_open(NULL, &_log);
-        _mem_pool = yf_create_pool(1024000, &_log);
+        _log = yf_log_open(YF_LOG_DEBUG, 8192, NULL);
+        _mem_pool = yf_create_pool(1024000, _log);
 
         yf_init_bit_indexs();
 
-        yf_init_time(&_log);
-        yf_update_time(NULL, NULL, &_log);
+        yf_init_time(_log);
+        yf_update_time(NULL, NULL, _log);
 
         yf_int_t ret = yf_strerror_init();
         assert(ret == YF_OK);
 
-        ret = yf_save_argv(&_log, argc, argv);
+        ret = yf_save_argv(_log, argc, argv);
         assert(ret == YF_OK);
         for (int i = 0; yf_os_environ[i]; ++i)
         {
                 printf("os_env{ %s }\n", yf_os_environ[i]);
         }
 
-        ret = yf_init_setproctitle(&_log);
+        ret = yf_init_setproctitle(_log);
         assert(ret == YF_OK);
 
-        ret = yf_init_processs(&_log);
+        ret = yf_init_processs(_log);
         assert(ret == YF_OK);
 
-        ret = yf_init_threads(36, 1024 * 1024, 1, &_log);
+        ret = yf_init_threads(36, 1024 * 1024, 1, _log);
         assert(ret == YF_OK);
 
         testing::InitGoogleTest(&argc, (char **)argv);

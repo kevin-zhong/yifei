@@ -28,12 +28,13 @@ static yf_thread_value_t _yf_thread_exe_wrapper(void *arg)
                 //if block this signos, proc will exit unnormly...
                 sigdelset(&mask, SIGSEGV);
                 sigdelset(&mask, SIGFPE);
+                sigdelset(&mask, SIGBUS);
                 
                 yf_int_t rc = pthread_sigmask(SIG_BLOCK, &mask, NULL);
                 assert(rc == 0);
         }
         
-        return ctx.func(arg);
+        return ctx.func(ctx.arg);
 }
 
 

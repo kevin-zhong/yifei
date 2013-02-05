@@ -7,7 +7,7 @@ extern "C" {
 }
 
 yf_pool_t *_mem_pool = NULL;
-yf_log_t _log;
+yf_log_t* _log;
 yf_evt_driver_t *_evt_driver = NULL;
 
 yf_s64_t tv_ms[4096];
@@ -156,7 +156,7 @@ void  start_tm_test(void *data, yf_log_t *log)
         yf_time_t utime;
         for (size_t i = 0; i < YF_ARRAY_SIZE(tv_ms); ++i)
         {
-                ret = yf_alloc_tm_evt(_evt_driver, &tm_evt, &_log);
+                ret = yf_alloc_tm_evt(_evt_driver, &tm_evt, _log);
                 ASSERT_EQ(ret, YF_OK);
 
                 tm_evt->data = (void *)(tv_ms + i);
@@ -193,24 +193,23 @@ public:
 
                 yf_cpuinfo();
 
-                _log.max_log_size = 8192;
-                yf_log_open(NULL, &_log);
-                _mem_pool = yf_create_pool(1024000, &_log);
+                _log = yf_log_open(YF_LOG_DEBUG, 8192, NULL);
+                _mem_pool = yf_create_pool(1024000, _log);
 
-                yf_init_time(&_log);
-                yf_update_time(NULL, NULL, &_log);
+                yf_init_time(_log);
+                yf_update_time(NULL, NULL, _log);
 
                 yf_int_t ret = yf_strerror_init();
                 assert(ret == YF_OK);
-                ret = yf_init_setproctitle(&_log);
+                ret = yf_init_setproctitle(_log);
                 assert(ret == YF_OK);
-                ret = yf_init_processs(&_log);
+                ret = yf_init_processs(_log);
                 assert(ret == YF_OK);
 
                 //init evt driver
                 yf_evt_driver_init_t evt_driver_init;
                 yf_memzero_st(evt_driver_init);
-                evt_driver_init.log = &_log;
+                evt_driver_init.log = _log;
                 evt_driver_init.nfds = 1024;
                 evt_driver_init.nstimers = 4296;
 
@@ -231,13 +230,13 @@ public:
 
 TEST_F(DriverTestor, Timer)
 {
-        start_tm_test(NULL, &_log);
+        start_tm_test(NULL, _log);
 }
 
 TEST_F(DriverTestor, TmFd)
 {
         yf_pid_t pid = yf_spawn_process(start_tm_test, (void*)-1, "tm_test_child", 
-                        YF_PROC_CHILD, NULL, &_log);
+                        YF_PROC_CHILD, NULL, _log);
 
         for (int i = 0; true; ++i)
         {
@@ -247,7 +246,7 @@ TEST_F(DriverTestor, TmFd)
                 yf_pid_t wait_pid = waitpid(-1, &status, WNOHANG);
                 if (wait_pid == pid)
                 {
-                        yf_log_debug0(YF_LOG_DEBUG, &_log, 0, "child process exit");
+                        yf_log_debug0(YF_LOG_DEBUG, _log, 0, "child process exit");
                         break;
                 }
 
@@ -257,11 +256,11 @@ TEST_F(DriverTestor, TmFd)
                         channel.command = YF_CMD_DATA;
                         
                         yf_sprintf(channel.data, "cmd_data_%L", ::random());
-                        yf_log_debug1(YF_LOG_DEBUG, &_log, 0, "send cmd data=%s", channel.data);
+                        yf_log_debug1(YF_LOG_DEBUG, _log, 0, "send cmd data=%s", channel.data);
 
                         //send twice
-                        yf_write_channel(yf_processes[0].channel[0], &channel, &_log);
-                        yf_write_channel(yf_processes[0].channel[0], &channel, &_log);
+                        yf_write_channel(yf_processes[0].channel[0], &channel, _log);
+                        yf_write_channel(yf_processes[0].channel[0], &channel, _log);
                 }
         }
 }
@@ -275,7 +274,7 @@ TEST_F_INIT(DriverTestor, TmFd);
 
 int main(int argc, char **argv)
 {
-        yf_int_t ret = yf_save_argv(&_log, argc, argv);
+        yf_int_t ret = yf_save_argv(_log, argc, argv);
         assert(ret == YF_OK);
 
         yf_init_bit_indexs();
