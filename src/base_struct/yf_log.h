@@ -1,6 +1,10 @@
 #ifndef _YF_LOG_H
 #define _YF_LOG_H
 
+/*
+* cant log in one thread an close in another thread at the same time
+*/
+
 #include <base_struct/yf_core.h>
 #include <ppc/yf_header.h>
 #include <ppc/yf_atomic.h>
@@ -22,6 +26,7 @@ struct yf_log_s
         
         yf_lock_t  lock;
         void* log_ctx;
+        void* log_actions;
 };
 
 
@@ -32,13 +37,13 @@ struct yf_log_s
 #define YF_HAVE_VARIADIC_MACROS  1
 
 #define yf_log_error(level, log, ...)                                        \
-        if ((log)->log_level >= level) yf_log_error_core(level, log, __FILE__, __LINE__, __VA_ARGS__)
+        if ((log) && (log)->log_level >= level) yf_log_error_core(level, log, __FILE__, __LINE__, __VA_ARGS__)
 
 void yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
                 , yf_err_t err, const char *fmt, ...);
 
 #define yf_log_debug(level, log, ...)                                        \
-        if ((log)->log_level & level)                                             \
+        if ((log) && (log)->log_level & level)                                             \
                 yf_log_error_core(YF_LOG_DEBUG, log, __FILE__, __LINE__, __VA_ARGS__)
 
 /*********************************/
@@ -48,13 +53,13 @@ void yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _
 #define YF_HAVE_VARIADIC_MACROS  1
 
 #define yf_log_error(level, log, args...)                                    \
-        if ((log)->log_level >= level) yf_log_error_core(level, log, __FILE__, __LINE__, args)
+        if ((log) && (log)->log_level >= level) yf_log_error_core(level, log, __FILE__, __LINE__, args)
 
 void yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
                 , yf_err_t err, const char *fmt, ...);
 
 #define yf_log_debug(level, log, args ...)                                    \
-        if ((log)->log_level & level)                                             \
+        if ((log) && (log)->log_level & level)                                             \
                 yf_log_error_core(YF_LOG_DEBUG, log, __FILE__, __LINE__, args)
 
 /*********************************/

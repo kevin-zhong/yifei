@@ -106,21 +106,28 @@ yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
                 , yf_err_t err, const char *fmt, va_list args)
 #endif
 {
+        if (log == NULL)
+                return;
+        
 #if (YF_HAVE_VARIADIC_MACROS)
         va_list args;
 #endif
         char *p, *last;
         yf_log_msg_t  log_msg;
-        char *errstr = yf_log_actions.alloc_buf(log);
+        yf_log_actions_t* log_actions = log->log_actions;
 
-        if (errstr == NULL)
+        yf_lock(&log->lock);
+        
+        char *errstr = log_actions->alloc_buf(log);
+
+        if (errstr == NULL) {
+                yf_unlock(&log->lock);
                 return;
+        }
 
         log_msg.err = err;
         log_msg.log_buf = errstr;
         log_msg.log_level = level;
-
-        yf_lock(&log->lock);
 
         last = errstr + log->each_log_max_len;
 
@@ -160,7 +167,7 @@ yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
         yf_linefeed(p);
         log_msg.log_len = p - log_msg.log_buf;
 
-        yf_log_actions.log_msg(log, &log_msg);
+        log_actions->log_msg(log, &log_msg);
         
         yf_unlock(&log->lock);
 }
@@ -228,6 +235,8 @@ yf_log_t *yf_log_open(yf_uint_t log_level, yf_u32_t log_max_len, void* init_ctx)
         yf_log->each_log_max_len = log_max_len;
         yf_lock_init(&yf_log->lock);
 
+        yf_log->log_actions = (void*)&yf_log_actions;
+
         return  yf_log;
 }
 
@@ -235,7 +244,7 @@ yf_log_t *yf_log_open(yf_uint_t log_level, yf_u32_t log_max_len, void* init_ctx)
 void  yf_log_close(yf_log_t* yf_log)
 {
         yf_lock_destory(&yf_log->lock);
-        yf_log_actions.log_close(yf_log);
+        ((yf_log_actions_t*)yf_log->log_actions)->log_close(yf_log);
 }
 
 

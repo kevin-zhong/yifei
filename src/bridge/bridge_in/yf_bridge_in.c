@@ -207,7 +207,8 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
 
 failed:
         yf_free_node_to_pool(&bridge_in->task_cb_info_pool, task_cb, log);
-        if (tq)
+        
+        if (tq && bridge_in->unlock_tq)
                 bridge_in->unlock_tq(bridge_in, tq, child_no, log);
         return -1;
 }

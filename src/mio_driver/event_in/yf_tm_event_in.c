@@ -134,7 +134,7 @@ yf_int_t   yf_add_timer(yf_tm_evt_driver_in_t* tm_evt_driver
                 
                 index = yf_far_timer_inc(tm_evt_driver, (diff_ms >> _YF_FAR_TIMER_PRCS_MS_BIT));
                 
-                yf_log_debug2(YF_LOG_DEBUG, log, 0, "far timer roll index=%d, add timer index=%d, "
+                yf_log_debug4(YF_LOG_DEBUG, log, 0, "far timer roll index=%d, add timer index=%d, "
                                 "pass_mod_ms=%d, diff_ms=%d", 
                                 tm_evt_driver->far_tm_roll_index, index, 
                                 pass_mod_ms, diff_ms);
@@ -354,7 +354,7 @@ static void yf_update_nearest_tm_ms(yf_tm_evt_driver_in_t* tm_evt_driver)
                 tm_evt_driver->nearest_timeout_ms 
                                 = unempty_inedex << _YF_FAR_TIMER_PRCS_MS_BIT;
 
-                yf_log_debug1(YF_LOG_DEBUG, tm_evt_driver->log, 0, 
+                yf_log_debug2(YF_LOG_DEBUG, tm_evt_driver->log, 0, 
                                 "no near evts, unempty_index=%d so nearest_timeout_ms=%d", 
                                 unempty_inedex, 
                                 tm_evt_driver->nearest_timeout_ms);

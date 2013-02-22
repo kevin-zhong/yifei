@@ -6,6 +6,7 @@ extern "C" {
 #include <base_struct/yf_core.h>
 #include <mio_driver/yf_event.h>
 #include <bridge/yf_bridge.h>
+#include <log_ext/yf_log_file.h>
 
 //just for test..., dont include this...
 #include <bridge/bridge_in/yf_bridge_in.h>
@@ -33,7 +34,8 @@ struct  TaskTest
 
 TEST_F(BridgeTestor, TaskQueue)
 {
-        yf_log_t* log_tmp = yf_log_open(YF_LOG_DEBUG, 8192, NULL);
+        yf_log_file_init_ctx_t log_file_init = {1024*128, 1024*1024*64, 8, NULL};
+        yf_log_t* log_tmp = yf_log_open(YF_LOG_DEBUG, 8192, &log_file_init);
         
         char  tq_buf[102400];
         task_info_t  task_info;
@@ -123,7 +125,15 @@ void _send_task(yf_bridge_t* bridge
         TaskTest* task_test = (TaskTest*)task;
         task_test->resp = task_test->req * 2;
 
-        ASSERT_TRUE(yf_send_task_res(bridge, task, len, id, 0, log) == 0);        
+        assert(task_test->buf_len + sizeof(TaskTest) == len);
+
+        //if tq size short, maybe fail...
+        yf_uint_t  cnt = 0;
+        while (yf_send_task_res(bridge, task, len, id, 0, log) != YF_OK)
+        {
+                yf_log_debug(YF_LOG_DEBUG, log, 0, "send task res fail, try cnt=%d...", ++cnt);
+                yf_msleep(100);
+        }
 }
 
 void on_task_fchild(yf_bridge_t* bridge
@@ -149,6 +159,8 @@ void on_task_fparent(yf_bridge_t* bridge
         }
 }
 
+char cmp_buf[10240];
+
 void on_task_res_fparent(yf_bridge_t* bridge
                 , void* task_res, size_t len, yf_u64_t id
                 , yf_int_t status, void* data, yf_log_t* log)
@@ -159,6 +171,8 @@ void on_task_res_fparent(yf_bridge_t* bridge
                 TaskTest* task_test = (TaskTest*)task_res;
                 assert(task_test->req * 2 == task_test->resp);
                 assert(task_test->buf_len + sizeof(TaskTest) == len);
+                char* cbuf = (char*)task_test + sizeof(TaskTest);
+                assert(memcmp(cmp_buf, cbuf, task_test->buf_len) == 0);
         }
         else {
                 yf_log_debug(YF_LOG_DEBUG, log, 0, "task_%l err status=%d", 
@@ -243,6 +257,7 @@ void on_poll_evt_driver(yf_evt_driver_t* evt_driver, void* data, yf_log_t* log)
         {
                 if (g_poll_cnt == 0)
                 {
+                        yf_log_debug(YF_LOG_DEBUG, log, 0, "will exit, first destory bridge...");
                         yf_bridge_destory(g_bridge, log);
                         //wait for child proc exit...
                         yf_sleep(3);
@@ -328,6 +343,8 @@ void  bridge_parent_init(yf_bridge_cxt_t* bridge_ctx, yf_int_t attach_task_bridg
         
         _evt_driver = yf_evt_driver_create(&driver_init);
         ASSERT_TRUE(_evt_driver != NULL);
+
+        yf_log_file_flush_drive(_evt_driver, 5000, NULL);
 
         yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, on_exe_exit_signal};
         ASSERT_EQ(YF_OK, yf_register_singal_evt(_evt_driver, &sig_child_evt, _log));
@@ -461,12 +478,23 @@ TEST_F_INIT(BridgeTestor, TaskQueue);
 
 int main(int argc, char **argv)
 {
+        yf_memset(cmp_buf, '8', sizeof(cmp_buf));
+        
         srandom(time(NULL));
         yf_pagesize = getpagesize();
 
         yf_cpuinfo();
 
-        _log = yf_log_open(YF_LOG_DEBUG, 8192, (void*)"dir/bridge.log");
+        yf_int_t ret = 0;
+
+        //first need init threads before init log file
+        ret = yf_init_threads(36, 1024 * 1024, 1, NULL);
+        assert(ret == YF_OK);
+        
+        yf_log_file_init(NULL);
+        yf_log_file_init_ctx_t log_file_init = {1024*128, 1024*1024*64, 8, "dir/bridge.log"};
+
+        _log = yf_log_open(YF_LOG_DEBUG, 8192, (void*)&log_file_init);
         _mem_pool = yf_create_pool(102400, _log);
 
         yf_init_bit_indexs();
@@ -474,7 +502,7 @@ int main(int argc, char **argv)
         yf_init_time(_log);
         yf_update_time(NULL, NULL, _log);
 
-        yf_int_t ret = yf_strerror_init();
+        ret = yf_strerror_init();
         assert(ret == YF_OK);
 
         ret = yf_save_argv(_log, argc, argv);
@@ -484,12 +512,7 @@ int main(int argc, char **argv)
         assert(ret == YF_OK);
 
         ret = yf_init_processs(_log);
-        assert(ret == YF_OK);        
-
-        ret = yf_init_threads(36, 1024 * 1024, 1, _log);
         assert(ret == YF_OK);
-
-        yf_set_sig_handler(SIGIO, SIG_IGN, _log);
 
         testing::InitGoogleTest(&argc, (char **)argv);
         ret = RUN_ALL_TESTS();

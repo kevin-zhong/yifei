@@ -101,6 +101,8 @@ static yf_int_t yf_bridge_thr_attach_res_bridge(yf_bridge_in_t* bridge
 
 static void yf_bridge_thr_destory(yf_bridge_in_t* bridge, yf_log_t* log)
 {
+        //TODO...
+        return;
         yf_bridge_thr_t* bridge_thr = (yf_bridge_thr_t*)bridge->bridge_data;
 
         yf_int_t i1 = 0;

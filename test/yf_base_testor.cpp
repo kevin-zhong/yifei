@@ -552,6 +552,21 @@ TEST_F(BaseTest, SlabPool)
 }
 
 
+/*
+* slab pool
+*/
+TEST_F(BaseTest, IdSeed)
+{
+        yf_id_seed_group_t  seed_group;
+        yf_id_seed_group_init(&seed_group);
+        for (yf_u64_t i = 0; i < (((yf_u64_t)1)<<32); ++i)
+        {
+                yf_u32_t alloc_id = yf_id_seed_alloc(&seed_group);
+                if (yf_mod(alloc_id, 8388608) == 0)
+                        fprintf(stdout, "alloc id=%d\n", alloc_id);
+        }
+}
+
 #ifdef TEST_F_INIT
 TEST_F_INIT(BaseTest, BaseAlgo);
 TEST_F_INIT(BaseTest, BitOp);
@@ -562,6 +577,7 @@ TEST_F_INIT(BaseTest, StringLog);
 TEST_F_INIT(BaseTest, Hash);
 TEST_F_INIT(BaseTest, NodePool);
 TEST_F_INIT(BaseTest, SlabPool);
+TEST_F_INIT(BaseTest, IdSeed);
 #endif
 
 int main(int argc, char **argv)

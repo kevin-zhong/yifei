@@ -1166,6 +1166,7 @@ macro InsFileHeadWithName(hbuf, file_name)
 	InsBufLine(hbuf, 7, "")
 	InsBufLine(hbuf, 8, "")
 	AppendBufLine(hbuf, "#endif")
+	AppendBufLine(hbuf, "")
 
 	SetBufIns(hbuf, 7, 0)
 }

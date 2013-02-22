@@ -48,11 +48,11 @@ void on_timeout(struct yf_tm_evt_s *evt, yf_time_t *start)
         
         if (diff_tms >= 10)
         {
-                yf_log_debug2(YF_LOG_DEBUG, evt->log, 0, "real=%L vs target=%L, big lacy diff=%L", 
+                yf_log_debug3(YF_LOG_DEBUG, evt->log, 0, "real=%L vs target=%L, big lacy diff=%L", 
                                 real_tms, *org_tms, diff_tms);
         }
         else {
-                yf_log_debug2(YF_LOG_DEBUG, evt->log, 0, "real=%L vs target=%L, diff=%L", 
+                yf_log_debug3(YF_LOG_DEBUG, evt->log, 0, "real=%L vs target=%L, diff=%L", 
                                 real_tms, *org_tms, diff_tms);                
         }
 

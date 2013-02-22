@@ -75,7 +75,7 @@ yf_int_t  yf_task_push(yf_task_queue_t* queue, task_info_t* task_info
 
         queue->write_offset = write_off;
 
-        yf_log_debug4(YF_LOG_DEBUG, log, 0, 
+        yf_log_debug5(YF_LOG_DEBUG, log, 0, 
                         "tq cap=%d, free=%d, after task push, r=%d, w=%d, tlen=%d", 
                         queue->capacity, yf_tq_free_capacity(queue), 
                         queue->read_offset, queue->write_offset, 

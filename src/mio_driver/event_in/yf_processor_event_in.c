@@ -385,7 +385,7 @@ void yf_on_child_exit(yf_process_t* proc)
         proc_evt->error = yf_proc_exit_err(proc->status);
         proc_evt->exit_code = yf_proc_exit_code(proc->status);
 
-        yf_log_debug3(YF_LOG_DEBUG, proc_evt->log, 0, 
+        yf_log_debug4(YF_LOG_DEBUG, proc_evt->log, 0, 
                         "%s(path=%s) execute error=%d, exit_code=%d", 
                         proc_evt->exec_ctx.name, 
                         proc_evt->exec_ctx.path, 

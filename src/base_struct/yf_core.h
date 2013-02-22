@@ -33,6 +33,7 @@ typedef struct yf_str_s           yf_str_t;
 typedef struct yf_node_pool_s  yf_node_pool_t;
 typedef struct yf_slab_pool_s  yf_slab_pool_t;
 
+#include "yf_id_seed.h"
 #include "yf_string.h"
 #include "yf_mem_pool.h"
 #include "yf_buf.h"
@@ -46,10 +47,11 @@ typedef struct yf_slab_pool_s  yf_slab_pool_t;
 #include "yf_log.h"
 
 
-#define yf_min(a, b)   ((a < b) ? (a) : (b))
-#define yf_max(a, b)  ((a > b) ? (a) : (b))
+#define yf_min(a, b)   (((a) < (b)) ? (a) : (b))
+#define yf_max(a, b)  (((a) > (b)) ? (a) : (b))
 
 #define yf_swap(a, b, mid) do {mid = a; a = b; b = mid;} while (0)
+#define yf_swap2(a, b) do {typeof(b) mid = a; a = b; b = mid;} while (0)
 
 #define YF_ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 

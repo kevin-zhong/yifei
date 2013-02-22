@@ -11,7 +11,7 @@ yf_int_t yf_replace_sig_handler(int signo, signal_ptr sig_handler
         sigemptyset(&sa.sa_mask);
 
 #ifdef  SA_RESTART
-        sa.sa_flags |= SA_RESTART;
+        //sa.sa_flags |= SA_RESTART;
 #endif
         
         if (sigaction(signo, &sa, &sa_old) == -1)

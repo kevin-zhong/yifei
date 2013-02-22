@@ -12,12 +12,15 @@ size_t yf_node_taken_size(size_t size);
 
 struct yf_node_pool_s
 {
+        //init attr
         char* nodes_array;
-        yf_slist_part_t  free_list;
         size_t  total_num;
         size_t  each_taken_size;
+
+        //inner data...
+        yf_slist_part_t  free_list;
         size_t  free_size;
-        yf_u32_t  id_seed;
+        yf_id_seed_group_t  id_seed;
 };
 
 void  yf_init_node_pool(yf_node_pool_t* node_pool, yf_log_t* log);
