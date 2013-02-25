@@ -111,7 +111,7 @@ ssize_t yf_hex_2_bin(char *dst, char *src, size_t len)
 }
 
 
-
+//%l have a bug... add on 20130223 04:40
 /*
  * supported formats:
  *    %[0][width][x][X]O        off_t

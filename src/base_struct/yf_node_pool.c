@@ -33,6 +33,8 @@ void  yf_init_node_pool(yf_node_pool_t* node_pool, yf_log_t* log)
 
         yf_id_seed_group_init(&node_pool->id_seed);
         
+        yf_log_debug1(YF_LOG_DEBUG, log, 0, "node pool id_seed=%d", node_pool->id_seed);
+        
         node_pool->free_size = node_pool->total_num;
 
         yf_init_slist_head(&node_pool->free_list);

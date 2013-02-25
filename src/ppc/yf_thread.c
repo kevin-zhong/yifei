@@ -33,6 +33,11 @@ static yf_thread_value_t _yf_thread_exe_wrapper(void *arg)
                 yf_int_t rc = pthread_sigmask(SIG_BLOCK, &mask, NULL);
                 assert(rc == 0);
         }
+
+#if defined (YF_MULTI_EVT_DRIVER)
+        //should init time..., add on 20130223 03:49
+        yf_update_time(NULL, NULL, NULL);
+#endif
         
         return ctx.func(ctx.arg);
 }

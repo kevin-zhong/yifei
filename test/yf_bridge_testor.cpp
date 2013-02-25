@@ -114,7 +114,7 @@ TEST_F(BridgeTestor, TaskQueue)
 }
 
 
-#define MAX_SEND_BATCH 64
+#define MAX_SEND_BATCH 128
 yf_uint_t  g_task_cnt = 0;
 yf_uint_t  g_send_batch = 0;
 yf_bridge_t* g_bridge;
@@ -238,6 +238,9 @@ void _on_timeout_handler(struct yf_tm_evt_s* evt, yf_uint_t* task_cnt, yf_uint_t
 void on_parent_timeout_handler(struct yf_tm_evt_s* evt, yf_time_t* start)
 {
         _on_timeout_handler(evt, &g_task_cnt, &g_send_batch);
+        
+        yf_log_debug(YF_LOG_DEBUG, evt->log, 0, "parent send child task cnt=%d, batch=%d", 
+                        g_task_cnt, g_send_batch);
 }
 
 

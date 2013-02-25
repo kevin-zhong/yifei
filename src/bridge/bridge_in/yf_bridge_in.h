@@ -11,12 +11,6 @@
 
 #include "yf_bridge_task.h"
 
-typedef struct yf_task_cb_info_s
-{
-        void* data;
-}
-yf_task_cb_info_t;
-
 #define  YF_ANY_CHILD_NO 0xfffe
 
 
@@ -34,13 +28,14 @@ typedef struct yf_bridge_in_s
         yf_uint_t  task_execut[YF_BRIDGE_MAX_CHILD_NUM];
 
         //all can call
+        //may change child_no if arg is ptr...
         yf_int_t (*lock_tq)(struct yf_bridge_in_s* bridge
                         , yf_task_queue_t** tq, yf_int_t* child_no, yf_log_t* log);
         void (*unlock_tq)(struct yf_bridge_in_s* bridge
                         , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);
 
         yf_int_t (*lock_res_tq)(struct yf_bridge_in_s* bridge
-                        , yf_task_queue_t** tq, yf_int_t child_no, yf_log_t* log);
+                        , yf_task_queue_t** tq, yf_int_t* child_no, yf_log_t* log);
         void (*unlock_res_tq)(struct yf_bridge_in_s* bridge
                         , yf_task_queue_t* tq, yf_int_t child_no, yf_log_t* log);        
 
@@ -48,6 +43,8 @@ typedef struct yf_bridge_in_s
         * parent call
         */
         yf_task_res_handle task_res_handler;
+
+        yf_evt_driver_t* parent_evt_driver;
 
         //yes, task_signal ret void, cause if fail, child may exit...
         //and, you should lock tq before call this...
@@ -84,6 +81,16 @@ typedef struct yf_bridge_in_s
         yf_u32_t  end_flag;
 }
 yf_bridge_in_t;
+
+
+typedef struct yf_task_ctx_s
+{
+        void* data;
+        yf_tm_evt_t* tm_evt;
+        yf_bridge_in_t* bridge_in;
+        yf_int_t  child_no;
+}
+yf_task_ctx_t;
 
 
 #define __yf_bridge_set_ac(brige, ac, prefix) (brige)->ac = prefix ## _ ## ac;

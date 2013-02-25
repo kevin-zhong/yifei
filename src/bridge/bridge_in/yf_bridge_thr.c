@@ -11,14 +11,21 @@ static int __cmp_tid(const void *p1, const void *p2)
         return *((yf_s64_t*)p1) - *((yf_s64_t*)p2);
 }
 
+/*
+* changed on 20130223 1:09 if bsearch fail(if child thread run first before parent create 
+* all child threads), then iterate...all
+* though right here, but cause bug if child thread not sorted, changed again on 22:54
+*/
 #define yf_bridge_tno(bridge, bridge_bt, child_no) \
+        child_no = -1; \
         yf_tid_t tid = yf_thread_self(); \
         yf_int_t i1 = 0; \
         if (bridge->ctx.exec_func) { \
                 yf_bsearch(tid, bridge_bt->tids, bridge->ctx.child_num, yf_bsearch_cmp, i1); \
-                if (i1 < bridge->ctx.child_num && bridge_bt->tids[i1] == tid) \
-                        child_no = i1; \
-        } else { \
+                assert(i1 < bridge->ctx.child_num && bridge_bt->tids[i1] == tid); \
+                child_no = i1; \
+        } \
+        else { \
                 for ( i1 = 0; i1 <  bridge->ctx.child_num; i1++ ) \
                 { \
                         if (bridge_bt->tids[i1] == tid) {\
@@ -27,6 +34,19 @@ static int __cmp_tid(const void *p1, const void *p2)
                         } \
                 } \
         }
+
+/*
+* why lock then unlock? just wait for all slibe threads created...
+*/
+#define _child_thread_wrapper(tbridge) \
+static yf_thread_value_t _##tbridge##_exe(void *arg) \
+{ \
+        yf_bridge_in_t* bridge = arg; \
+        tbridge* bridge_data = bridge->bridge_data; \
+        yf_lock(&bridge_data->attach_lock); \
+        yf_unlock(&bridge_data->attach_lock); \
+        return ((yf_thread_exe_pt)bridge->ctx.exec_func)(arg); \
+}
 
 
 /*
@@ -42,6 +62,8 @@ typedef struct yf_bridge_thr_s
         yf_lock_t  attach_lock;
 }
 yf_bridge_thr_t;
+
+_child_thread_wrapper(yf_bridge_thr_t);
 
 
 static yf_int_t yf_bridge_thr_lock_tq(yf_bridge_in_t* bridge
@@ -60,11 +82,11 @@ static yf_int_t yf_bridge_thr_lock_tq(yf_bridge_in_t* bridge
 
 
 static yf_int_t yf_bridge_thr_lock_res_tq(yf_bridge_in_t* bridge
-                , yf_task_queue_t** tq, yf_int_t child_no, yf_log_t* log)
+                , yf_task_queue_t** tq, yf_int_t* child_no, yf_log_t* log)
 {
         yf_bridge_thr_t* bridge_thr = (yf_bridge_thr_t*)bridge->bridge_data;
         
-        *tq = bridge_thr->rtqs[child_no];
+        *tq = bridge_thr->rtqs[*child_no];
         return YF_OK;
 }
 
@@ -74,7 +96,8 @@ static void yf_bridge_thr_task_signal(yf_bridge_in_t* bridge
 {
         yf_bridge_thr_t* bridge_thr = (yf_bridge_thr_t*)bridge->bridge_data;
 
-        yf_bridge_channel_signal(bridge_thr->channels + child_no, 1, log);
+        yf_int_t ret = yf_bridge_channel_signal(bridge_thr->channels + child_no, 1, log);
+        assert(ret == YF_OK);
 }
 
 static yf_int_t yf_bridge_thr_attach_res_bridge(yf_bridge_in_t* bridge
@@ -152,7 +175,8 @@ static void yf_bridge_thr_task_res_signal(yf_bridge_in_t* bridge
 {
         yf_bridge_thr_t* bridge_thr = (yf_bridge_thr_t*)bridge->bridge_data;
 
-        yf_bridge_channel_signal(bridge_thr->channels + child_no, 0, log);
+        yf_int_t ret = yf_bridge_channel_signal(bridge_thr->channels + child_no, 0, log);
+        assert(ret == YF_OK);
 }
 
 
@@ -241,6 +265,9 @@ yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         __yf_bridge_set_ac(bridge_in, wait_task, yf_bridge_thr);
         __yf_bridge_set_ac(bridge_in, attach_child_ins, yf_bridge_thr);
 
+        //locked, child thread should run after all child threads created..., 2013/02/23 22:58
+        yf_lock(&bridge_thr->attach_lock);
+
         for ( i1 = 0; i1 < bridge_in->ctx.child_num ; i1++ )
         {
                 //TODO
@@ -250,7 +277,7 @@ yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
                 if (bridge_in->ctx.exec_func)
                 {
                         ret = yf_create_thread(bridge_thr->tids + i1, 
-                                        (yf_thread_exe_pt)bridge_in->ctx.exec_func, 
+                                        _yf_bridge_thr_t_exe, 
                                         bridge_in, log);
                         assert(ret == 0);
                 }
@@ -261,6 +288,8 @@ yf_int_t  yf_bridge_et_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
                 yf_sort(bridge_thr->tids, bridge_in->ctx.child_num, 
                                 sizeof(bridge_thr->tids[0]), __cmp_tid);
         }
+
+        yf_unlock(&bridge_thr->attach_lock);
 
         return YF_OK;        
 }
@@ -278,9 +307,12 @@ typedef struct yf_bridge_bt_s
         yf_task_queue_t* tqs;
         yf_task_queue_t* rtqs;
 
+        yf_lock_t  attach_lock;
         yf_bridge_mutex_t  mutex;
 }
 yf_bridge_bt_t;
+
+_child_thread_wrapper(yf_bridge_bt_t);
 
 
 static yf_int_t yf_bridge_bt_lock_tq(yf_bridge_in_t* bridge
@@ -296,9 +328,10 @@ static yf_int_t yf_bridge_bt_lock_tq(yf_bridge_in_t* bridge
 
 
 static yf_int_t yf_bridge_bt_lock_res_tq(yf_bridge_in_t* bridge
-                , yf_task_queue_t** tq, yf_int_t child_no, yf_log_t* log)
+                , yf_task_queue_t** tq, yf_int_t* child_no, yf_log_t* log)
 {
         yf_bridge_bt_t* bridge_bt = (yf_bridge_bt_t*)bridge->bridge_data;
+        *child_no = 0;
         
         yf_bridge_mutex_lock(&bridge_bt->mutex, log);
         *tq = bridge_bt->rtqs;
@@ -454,13 +487,16 @@ yf_int_t  yf_bridge_bt_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         __yf_bridge_set_ac(bridge_in, unlock_tq, yf_bridge_bt);
         __yf_bridge_set_ac(bridge_in, unlock_res_tq, yf_bridge_bt);
 
+        yf_lock_init(&bridge_bt->attach_lock);
+        yf_lock(&bridge_bt->attach_lock);
+        
         for ( i1 = 0; i1 < bridge_in->ctx.child_num ; i1++ )
         {
                 //TODO
                 if (bridge_in->ctx.exec_func)
                 {
                         ret = yf_create_thread(bridge_bt->tids + i1, 
-                                        (yf_thread_exe_pt)bridge_in->ctx.exec_func, 
+                                        _yf_bridge_bt_t_exe, 
                                         bridge_in, log);
                         assert(ret == 0);
                 }
@@ -470,7 +506,9 @@ yf_int_t  yf_bridge_bt_creator(yf_bridge_in_t* bridge_in, yf_log_t* log)
         {
                 yf_sort(bridge_bt->tids, bridge_in->ctx.child_num, 
                                 sizeof(bridge_bt->tids[0]), __cmp_tid);
-        }        
+        }
+
+        yf_unlock(&bridge_bt->attach_lock);
 
         return YF_OK;
 }

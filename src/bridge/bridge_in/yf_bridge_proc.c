@@ -40,11 +40,11 @@ static yf_int_t yf_bridge_proc_lock_tq(yf_bridge_in_t* bridge
 
 
 static yf_int_t yf_bridge_proc_lock_res_tq(yf_bridge_in_t* bridge
-                , yf_task_queue_t** tq, yf_int_t child_no, yf_log_t* log)
+                , yf_task_queue_t** tq, yf_int_t* child_no, yf_log_t* log)
 {
         yf_bridge_proc_t* bridge_proc = (yf_bridge_proc_t*)bridge->bridge_data;
         
-        *tq = bridge_proc->rtqs[child_no];
+        *tq = bridge_proc->rtqs[*child_no];
         return YF_OK;        
 }
 
@@ -54,7 +54,8 @@ static void yf_bridge_proc_task_signal(yf_bridge_in_t* bridge
 {
         yf_bridge_proc_t* bridge_proc = (yf_bridge_proc_t*)bridge->bridge_data;
 
-        yf_bridge_channel_signal(bridge_proc->channels + child_no, 1, log);
+        yf_int_t ret = yf_bridge_channel_signal(bridge_proc->channels + child_no, 1, log);
+        assert(ret == YF_OK);
 }
 
 static yf_int_t yf_bridge_proc_attach_res_bridge(yf_bridge_in_t* bridge
@@ -126,7 +127,8 @@ static void yf_bridge_proc_task_res_signal(yf_bridge_in_t* bridge
 {
         yf_bridge_proc_t* bridge_proc = (yf_bridge_proc_t*)bridge->bridge_data;
 
-        yf_bridge_channel_signal(bridge_proc->channels + child_no, 0, log);
+        yf_int_t ret = yf_bridge_channel_signal(bridge_proc->channels + child_no, 0, log);
+        assert(ret == YF_OK);
 }
 
 
