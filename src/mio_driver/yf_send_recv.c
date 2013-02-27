@@ -25,7 +25,7 @@ yf_unix_recv(fd_rw_ctx_t *ctx, char *buf, size_t size)
         rev = ctx->fd_evt;
 
         do {
-                n = recv(rev->fd, buf, size, 0);
+                n = yf_recv(rev->fd, buf, size, 0);
 
                 yf_log_debug3(YF_LOG_DEBUG, rev->log, 0,
                                "recv: fd:%d %d of %d", rev->fd, n, size);
@@ -128,7 +128,7 @@ yf_readv_chain(fd_rw_ctx_t *ctx, yf_chain_t *chain)
         }
 
         do {
-                n = readv(rev->fd, (struct iovec *)vec.elts, vec.nelts);
+                n = yf_readv(rev->fd, (struct iovec *)vec.elts, vec.nelts);
                 yf_log_debug2(YF_LOG_DEBUG, rev->log, 0, "fd readv [%d] ret %d", 
                                 rev->fd, n);
 
@@ -205,7 +205,7 @@ yf_unix_send(fd_rw_ctx_t *ctx, char *buf, size_t size)
 
         for (;; )
         {
-                n = send(wev->fd, buf, size, 0);
+                n = yf_send(wev->fd, buf, size, 0);
 
                 yf_log_debug3(YF_LOG_DEBUG, wev->log, 0,
                                "send: fd:%d %d of %d", wev->fd, n, size);
@@ -326,7 +326,7 @@ yf_writev_chain(fd_rw_ctx_t *ctx, yf_chain_t *in, off_t limit)
                         send += size;
                 }
 
-                n = writev(wev->fd, vec.elts, vec.nelts);
+                n = yf_writev(wev->fd, vec.elts, vec.nelts);
 
                 if (n == -1)
                 {

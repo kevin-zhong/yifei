@@ -16,7 +16,7 @@ typedef struct
         yf_lock_t  write_lock;//protect write_buf, write_offset, write_waiting
         char*        write_buf;
         yf_uint_t  write_offset;
-        yf_uint_t  write_waiting:1;//if waiting..., cant switch buf or close...
+        yf_uint_t  write_waiting:1;//if waiting..., cant switch buf or yf_close...
 }
 _log_file_ctx_t;
 
@@ -217,7 +217,7 @@ static  void _log_file_write_impl(_log_file_ctx_t* log_ctx)
         log_ctx->last_write_tm = yf_now_times.clock_time;
 
         //cause write_waiting=True, so write buf+offset is safe
-        yf_write_fd(log_ctx->file->fd, log_ctx->write_buf, log_ctx->write_offset);
+        yf_write(log_ctx->file->fd, log_ctx->write_buf, log_ctx->write_offset);
 
         if (log_ctx->file->fd != yf_stderr)
         {
@@ -281,7 +281,7 @@ void _log_file_exit_handle(void)
 
                 if (log_file_ctx->write_waiting)
                 {
-                        yf_write_fd(log_file_ctx->file->fd, log_file_ctx->write_buf, 
+                        yf_write(log_file_ctx->file->fd, log_file_ctx->write_buf, 
                                         log_file_ctx->write_offset);
                         log_file_ctx->write_waiting = 0;
                 }
@@ -292,7 +292,7 @@ void _log_file_exit_handle(void)
                         fprintf(stdout, "log flush at exit, len=%d\n", 
                                         log_file_ctx->log_offset);
 #endif
-                        yf_write_fd(log_file_ctx->file->fd, log_file_ctx->log_buf, 
+                        yf_write(log_file_ctx->file->fd, log_file_ctx->log_buf, 
                                         log_file_ctx->log_offset);
                         log_file_ctx->log_offset = 0;
                 }

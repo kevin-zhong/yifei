@@ -61,7 +61,7 @@ void _set_atexit(void *data, yf_log_t *log)
 
         char buf[128] = {0};
         yf_snprintf(buf, sizeof(buf), "%d", getpid());
-        yf_write_fd(_fd, buf, strlen(buf));
+        yf_write(_fd, buf, strlen(buf));
 }
 
 yf_thread_value_t _thread_float(void *arg)

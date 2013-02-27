@@ -124,7 +124,7 @@ end:
 
 yf_int_t
 yf_os_signal_process(yf_signal_t* signals
-                , char *name, yf_int_t pid, yf_log_t *log)
+                , const char *name, yf_int_t pid, yf_log_t *log)
 {
         yf_signal_t *sig;
 

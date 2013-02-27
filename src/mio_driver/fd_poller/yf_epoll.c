@@ -75,7 +75,7 @@ static yf_int_t yf_epoll_uninit(yf_fd_poll_t *epoller)
 {
         yf_epoll_ctx_t *epoll_ctx = epoller->ctx->evt_poll->agen_data;
         if (epoll_ctx->kpfd >= 0) {
-                close(epoll_ctx->kpfd);
+                yf_close(epoll_ctx->kpfd);
                 epoll_ctx->kpfd = -1;
         }
         yf_free(epoller);

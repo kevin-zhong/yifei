@@ -4,14 +4,6 @@
 #include <base_struct/yf_core.h>
 #include <ppc/yf_header.h>
 
-/* OSF/1 actually disables recv() and send() in <sys/socket.h> */
-#ifdef  __osf__
-#undef  recv
-#undef  send
-#define recv(a, b, c, d)   recvfrom(a, b, c, d, 0, 0)
-#define send(a, b, c, d)   sendto(a, b, c, d, 0, 0)
-#endif
-
 #ifndef INADDR_NONE
 /* $$.Ic INADDR_NONE$$ */
 #define INADDR_NONE 0xffffffff  /* should have been in <netinet/in.h> */
@@ -50,10 +42,6 @@
 #define  UNIX_ADDRSTRLEN 512
 #endif
 
-/* Older resolvers do not have gethostbyname2() */
-#ifndef HAVE_GETHOSTBYNAME2
-#define gethostbyname2(host, family)     gethostbyname((host))
-#endif
 
 /* The structure returned by recvfrom_flags() */
 struct unp_in_pktinfo
@@ -147,15 +135,14 @@ yf_sock_len_t  yf_sock_len(yf_sock_addr_t *sa);
 
 typedef int  yf_socket_t;
 
-#define yf_socket          socket
 #define yf_socket_n        "socket()"
 
 
-#define yf_nonblocking(s)  fcntl(s, F_SETFL, fcntl(s, F_GETFL) | O_NONBLOCK)
-#define yf_nonblocking_n   "fcntl(O_NONBLOCK)"
+#define yf_nonblocking(s)  yf_fcntl(s, F_SETFL, fcntl(s, F_GETFL) | O_NONBLOCK)
+#define yf_nonblocking_n   "yf_fcntl(O_NONBLOCK)"
 
-#define yf_blocking(s)     fcntl(s, F_SETFL, fcntl(s, F_GETFL) & ~O_NONBLOCK)
-#define yf_blocking_n      "fcntl(!O_NONBLOCK)"
+#define yf_blocking(s)     yf_fcntl(s, F_SETFL, fcntl(s, F_GETFL) & ~O_NONBLOCK)
+#define yf_blocking_n      "yf_fcntl(!O_NONBLOCK)"
 
 
 int  __yf_tcp_nocork(yf_socket_t s, int tcp_nocork);
@@ -163,15 +150,15 @@ int  __yf_tcp_nocork(yf_socket_t s, int tcp_nocork);
 #define yf_tcp_nocork(s)  __yf_tcp_nocork(s, 1)
 #define yf_tcp_cork(s)  __yf_tcp_nocork(s, 0)
 
-#define yf_tcp_nocork_n   "setsockopt(TCP_CORK)"
-#define yf_tcp_cork_n     "setsockopt(!TCP_CORK)"
+#define yf_tcp_nocork_n   "yf_setsockopt(TCP_CORK)"
+#define yf_tcp_cork_n     "yf_setsockopt(!TCP_CORK)"
 
 
-#define yf_shutdown_socket    shutdown
+#define yf_shutdown_socket    yf_shutdown
 #define yf_shutdown_socket_n  "shutdown()"
 
-#define yf_close_socket    close
-#define yf_close_socket_n  "close() socket"
+#define yf_close_socket    yf_close
+#define yf_close_socket_n  "yf_close() socket"
 
 #endif
 

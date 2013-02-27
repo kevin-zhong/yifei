@@ -142,10 +142,10 @@ yf_int_t  yf_unregist_process_evt_in(yf_processor_event_in_t *pos)
                 }
         }
 
-        //close channel
+        //yf_close channel
         if (proc->type != YF_PROC_DETACH)
         {
-                yf_log_debug2(YF_LOG_DEBUG, pos->evt.log, 0, "close rw channel [%d-%d]", 
+                yf_log_debug2(YF_LOG_DEBUG, pos->evt.log, 0, "yf_close rw channel [%d-%d]", 
                                 proc->channel[0], 
                                 proc->channel[1]);
                 yf_close_channel(proc->channel, pos->evt.log);

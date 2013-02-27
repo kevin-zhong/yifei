@@ -1,6 +1,6 @@
 AM_CPPFLAGS=-I${top_srcdir}/src
 AM_LDFLAGS=-lpthread
-LDADD=/usr/local/lib/libgtest.a ${top_srcdir}/src/libyifei.a
+LDADD=/usr/local/lib/libgtest.a ${top_srcdir}/src/.libs/libyifei.a
 
 noinst_PROGRAMS=yf_base_testor yf_thread_testor yf_proc_testor yf_driver_testor yf_bridge_testor yf_sig_testor
 

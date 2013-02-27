@@ -175,10 +175,10 @@ yf_sock_len_t  yf_sock_len(yf_sock_addr_t *sa)
 int  __yf_tcp_nocork(yf_socket_t s, int tcp_nocork)
 {
 #ifdef  YF_LINUX
-        return setsockopt(s, IPPROTO_TCP, TCP_CORK,
+        return yf_setsockopt(s, IPPROTO_TCP, TCP_CORK,
                           (const void *)&tcp_nocork, sizeof(int));
 #else
-        return setsockopt(s, IPPROTO_TCP, TCP_NOPUSH,
+        return yf_setsockopt(s, IPPROTO_TCP, TCP_NOPUSH,
                           (const void *)&tcp_nocork, sizeof(int));
 #endif
 }

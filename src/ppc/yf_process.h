@@ -33,7 +33,7 @@ typedef struct  yf_process_s
         yf_proc_exit_pt  exit_cb;
         
         void *           data;
-        char *           name;
+        const char *  name;
 
         //int with 1 width error
         yf_int_t         type : 8;
@@ -48,7 +48,7 @@ yf_process_t;
 typedef struct
 {
         char *       path;
-        char *       name;
+        const char * name;
         char *const *argv;
         char *const *envp;
 
@@ -72,7 +72,7 @@ yf_exec_ctx_t;
 yf_int_t yf_init_processs(yf_log_t *log);
 
 yf_pid_t yf_spawn_process(yf_spawn_proc_pt proc
-                , void *data, char *name, yf_int_t respawn
+                , void *data, const char *name, yf_int_t respawn
                 , yf_proc_exit_pt  exit_cb
                 , yf_log_t *log);
 
@@ -92,7 +92,7 @@ void yf_update_channel(yf_channel_t* channel, yf_log_t *log);
 #include <sched.h>
 #define yf_sched_yield()  sched_yield()
 #else
-#define yf_sched_yield()  usleep(1)
+#define yf_sched_yield()  yf_usleep(1)
 #endif
 
 extern yf_pid_t  yf_pid;

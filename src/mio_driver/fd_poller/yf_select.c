@@ -220,7 +220,7 @@ static yf_int_t yf_select_dispatch(yf_fd_poll_t *poller)
         select_ctx->work_read_fd_set = select_ctx->read_fd_set;
         select_ctx->work_write_fd_set = select_ctx->write_fd_set;
 
-        ready = select(select_ctx->max_fd + 1, 
+        ready = yf_select(select_ctx->max_fd + 1, 
                         &select_ctx->work_read_fd_set, &select_ctx->work_write_fd_set, 
                         NULL, &tmv);
 
@@ -323,7 +323,7 @@ static void yf_select_repair_fd_sets(yf_fd_poll_t *poller)
 
                 len = sizeof(int);
 
-                if (getsockopt(s, SOL_SOCKET, SO_TYPE, &n, &len) == -1)
+                if (yf_getsockopt(s, SOL_SOCKET, SO_TYPE, &n, &len) == -1)
                 {
                         err = yf_socket_errno;
 
@@ -343,7 +343,7 @@ static void yf_select_repair_fd_sets(yf_fd_poll_t *poller)
 
                 len = sizeof(int);
 
-                if (getsockopt(s, SOL_SOCKET, SO_TYPE, &n, &len) == -1)
+                if (yf_getsockopt(s, SOL_SOCKET, SO_TYPE, &n, &len) == -1)
                 {
                         err = yf_socket_errno;
 

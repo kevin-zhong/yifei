@@ -25,8 +25,8 @@ typedef void (*signal_ptr)(int signo);
 typedef struct
 {
         int   signo;
-        char *signame;
-        char *name;
+        const char *signame;
+        const char *name;
 
         signal_ptr sig_handler;
 } 
@@ -37,7 +37,7 @@ yf_int_t yf_replace_sig_handler(int signo, signal_ptr sig_handler
 yf_int_t yf_set_sig_handler(int signo, signal_ptr sig_handler, yf_log_t *log);
 
 yf_int_t yf_os_signal_process(yf_signal_t* signals
-                , char *name, yf_int_t pid, yf_log_t *log);
+                , const char *name, yf_int_t pid, yf_log_t *log);
 
 //kill(getpid(), signo)
 void  yf_kill_exit(yf_int_t signo);

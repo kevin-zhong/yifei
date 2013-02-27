@@ -2,7 +2,7 @@
 #define _YF_LOG_H
 
 /*
-* cant log in one thread an close in another thread at the same time
+* cant log in one thread an yf_close in another thread at the same time
 */
 
 #include <base_struct/yf_core.h>

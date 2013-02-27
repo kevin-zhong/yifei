@@ -85,7 +85,7 @@ static void _log_default_log_msg(yf_log_t* yf_log, yf_log_msg_t* logmsg)
 {
         _log_default_ctx_t* log_ctx = yf_log->log_ctx;
         //printf("log_len=%d\n", logmsg->log_len);
-        yf_write_fd(log_ctx->file->fd, logmsg->log_buf, logmsg->log_len);
+        yf_write(log_ctx->file->fd, logmsg->log_buf, logmsg->log_len);
 }
 
 yf_log_actions_t  yf_log_actions = {

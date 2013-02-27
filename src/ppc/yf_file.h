@@ -83,8 +83,8 @@ yf_path_t;
 #define YF_FILE_OWNER_ACCESS    0600
 
 
-#define yf_close_file           close
-#define yf_close_file_n         "close()"
+#define yf_close_file           yf_close
+#define yf_close_file_n         "yf_close()"
 
 
 #define yf_delete_file(name)    unlink((const char *)name)
@@ -104,17 +104,6 @@ ssize_t yf_read_file(struct yf_file_s *file, char *buf, size_t size, off_t offse
 
 ssize_t yf_write_file(struct yf_file_s *file, char *buf, size_t size, off_t offset);
 
-
-#define yf_read_fd              read
-#define yf_read_fd_n            "read()"
-
-static inline ssize_t
-yf_write_fd(yf_fd_t fd, void *buf, size_t n)
-{
-        return write(fd, buf, n);
-}
-
-#define yf_write_fd_n           "write()"
 
 
 #define yf_linefeed(p)          *p++ = '\n';

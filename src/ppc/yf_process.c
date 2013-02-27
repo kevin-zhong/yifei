@@ -36,7 +36,7 @@ yf_init_processs(yf_log_t *log)
 
 yf_pid_t
 yf_spawn_process(yf_spawn_proc_pt proc
-                 , void *data, char *name, yf_int_t respawn
+                 , void *data, const char *name, yf_int_t respawn
                  , yf_proc_exit_pt  exit_cb
                  , yf_log_t *log)
 {
@@ -230,9 +230,9 @@ yf_int_t yf_daemon(yf_log_t *log)
 
         if (fd > STDERR_FILENO)
         {
-                if (close(fd) == -1)
+                if (yf_close(fd) == -1)
                 {
-                        yf_log_error(YF_LOG_EMERG, log, yf_errno, "close() failed");
+                        yf_log_error(YF_LOG_EMERG, log, yf_errno, "yf_close() failed");
                         return YF_ERROR;
                 }
         }
@@ -263,18 +263,18 @@ yf_close_parent_channels(yf_log_t *log)
                         continue;
                 }
 
-                if (close(yf_processes[n].channel[1]) == -1)
+                if (yf_close(yf_processes[n].channel[1]) == -1)
                 {
                         yf_log_error(YF_LOG_ALERT, log, yf_errno,
-                                     "close() channel failed");
+                                     "yf_close() channel failed");
                 }
                 yf_processes[n].channel[1] = -1;
         }
 
-        /*if (close(yf_processes[yf_process_slot].channel[0]) == -1)
+        /*if (yf_close(yf_processes[yf_process_slot].channel[0]) == -1)
         {
                 yf_log_error(YF_LOG_ALERT, log, yf_errno,
-                             "close() channel failed");
+                             "yf_close() channel failed");
         }*/
 }
 
@@ -336,14 +336,14 @@ void yf_update_channel(yf_channel_t *channel, yf_log_t *log)
         case YF_CMD_CLOSE_CHANNEL:
 
                 yf_log_debug4(YF_LOG_DEBUG, log, 0,
-                              "close channel s:%i pid:%P our:%P fd:%d",
+                              "yf_close channel s:%i pid:%P our:%P fd:%d",
                               channel->slot, channel->pid, yf_processes[channel->slot].pid,
                               yf_processes[channel->slot].channel[0]);
 
-                if (close(yf_processes[channel->slot].channel[0]) == -1)
+                if (yf_close(yf_processes[channel->slot].channel[0]) == -1)
                 {
                         yf_log_error(YF_LOG_ALERT, log, yf_errno,
-                                     "close() channel failed");
+                                     "yf_close() channel failed");
                 }
 
                 yf_processes[channel->slot].channel[0] = -1;

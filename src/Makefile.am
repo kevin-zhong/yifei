@@ -1,8 +1,6 @@
-lib_LIBRARIES=libyifei.a
+lib_LTLIBRARIES=libyifei.la
 
-libyifei_a_SOURCES=./net/yf_net_imp.c \
-./net/yf_connection.c \
-./mio_driver/yf_event.c \
+libyifei_la_SOURCES=./mio_driver/yf_event.c \
 ./mio_driver/fd_poller/yf_epoll.c \
 ./mio_driver/fd_poller/yf_select.c \
 ./mio_driver/fd_poller/yf_poll.c \
@@ -28,6 +26,7 @@ libyifei_a_SOURCES=./net/yf_net_imp.c \
 ./base_struct/yf_node_pool.c \
 ./base_struct/yf_slab_pool.c \
 ./base_struct/yf_id_seed.c \
+./ppc/yf_sys_call.c \
 ./ppc/yf_time.c \
 ./ppc/yf_cpuinfo.c \
 ./ppc/yf_process.c \
@@ -44,3 +43,4 @@ libyifei_a_SOURCES=./net/yf_net_imp.c \
 ./ppc/yf_proc_ctx.c \
 ./ppc/yf_atexit.c \
 ./log_ext/yf_log_file.c
+

@@ -34,7 +34,7 @@ yf_read_file(yf_file_t *file, char *buf, size_t size, off_t offset)
                 file->sys_offset = offset;
         }
 
-        n = read(file->fd, buf, size);
+        n = yf_read(file->fd, buf, size);
 
         if (n == -1)
         {
@@ -104,7 +104,7 @@ yf_write_file(yf_file_t *file, char *buf, size_t size, off_t offset)
 
         for (;; )
         {
-                n = write(file->fd, buf + written, size);
+                n = yf_write(file->fd, buf + written, size);
 
                 if (n == -1)
                 {
@@ -221,7 +221,7 @@ yf_write_chain_to_file(yf_file_t *file, yf_chain_t *cl, off_t offset, yf_pool_t 
                         file->sys_offset = offset;
                 }
 
-                n = writev(file->fd, vec.elts, vec.nelts);
+                n = yf_writev(file->fd, vec.elts, vec.nelts);
 
                 if (n == -1)
                 {
@@ -251,7 +251,7 @@ yf_set_file_time(char *name, yf_fd_t fd, time_t s)
 {
         struct timeval tv[2];
 
-        tv[0].tv_sec = yf_time();
+        tv[0].tv_sec = yf_now_times.wall_utime.tv_sec;
         tv[0].tv_usec = 0;
         tv[1].tv_sec = s;
         tv[1].tv_usec = 0;
@@ -369,7 +369,7 @@ yf_trylock_fd(yf_fd_t fd)
         fl.l_type = F_WRLCK;
         fl.l_whence = SEEK_SET;
 
-        if (fcntl(fd, F_SETLK, &fl) == -1)
+        if (yf_fcntl(fd, F_SETLK, &fl) == -1)
         {
                 return yf_errno;
         }
@@ -389,7 +389,7 @@ yf_lock_fd(yf_fd_t fd)
         fl.l_type = F_WRLCK;
         fl.l_whence = SEEK_SET;
 
-        if (fcntl(fd, F_SETLKW, &fl) == -1)
+        if (yf_fcntl(fd, F_SETLKW, &fl) == -1)
         {
                 return yf_errno;
         }
@@ -409,7 +409,7 @@ yf_unlock_fd(yf_fd_t fd)
         fl.l_type = F_UNLCK;
         fl.l_whence = SEEK_SET;
 
-        if (fcntl(fd, F_SETLK, &fl) == -1)
+        if (yf_fcntl(fd, F_SETLK, &fl) == -1)
         {
                 return yf_errno;
         }

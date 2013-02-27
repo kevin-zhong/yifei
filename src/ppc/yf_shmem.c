@@ -145,10 +145,10 @@ yf_shm_alloc(yf_shm_t *shm)
                               "mmap(/dev/zero, MAP_SHARED, %uz) failed", shm->size);
         }
 
-        if (close(fd) == -1)
+        if (yf_close(fd) == -1)
         {
                 yf_log_error(YF_LOG_ALERT, shm->log, yf_errno,
-                              "close(\"/dev/zero\") failed");
+                              "yf_close(\"/dev/zero\") failed");
         }
 
         return (shm->addr == MAP_FAILED) ? YF_ERROR : YF_OK;

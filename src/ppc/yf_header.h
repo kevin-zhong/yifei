@@ -94,10 +94,13 @@
 #include    <net/if_dl.h>
 #endif
 
+#include <netdb.h>
+
 typedef struct yf_file_s        yf_file_t;
 typedef struct yf_channel_s  yf_channel_t;
 
 #include "yf_int.h"
+#include "yf_sys_call.h"
 #include "yf_alloc.h"
 #include "yf_atomic.h"
 #include "yf_errno.h"

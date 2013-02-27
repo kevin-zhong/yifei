@@ -142,3 +142,14 @@ http://blog.csdn.net/russell_tao/article/details/7185588
 线程来说是没问题的；但其实这一问题对于子进程模式来说，是有问题的，假如子线程core掉
 然后这个task就丢失了；所以彻底的解决办法是父线程/进程自己加上检测手段，加入定时器
 即可；
+
+13/02/27 18:49
+在 ubuntu 平台下，发现 msghdr 既没有 msg_control 也没有 msg_accrights 属性；
+./ppc/yf_channel.c:174: error: 'struct msghdr' has no member named 'msg_accrightslen'
+./ppc/yf_channel.c:239: error: 'struct msghdr' has no member named 'msg_accrightslen'
+make[2]: *** [yf_channel.lo] Error 1
+make[2]: Leaving directory `/home/kevinzhong/yifei/src'
+make[1]: *** [all] Error 2
+make[1]: Leaving directory `/home/kevinzhong/yifei/src'
+make: *** [all-recursive] Error 1
+kevinzhong@ubuntu:~/yifei$ 

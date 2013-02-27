@@ -195,7 +195,7 @@ void  test_channel_func(void *data, yf_log_t *log)
                 {
                         char buf[256];
                         int cnt = sprintf(buf, "get file fd=%d, pid=%d\n", ch.fd, yf_pid);
-                        yf_write_fd(ch.fd, buf, cnt);
+                        yf_write(ch.fd, buf, cnt);
 
                         yf_channel_t  channel = {0};
                         channel.command = YF_CMD_DATA;
@@ -325,9 +325,9 @@ TEST_F(ProcTestor, ShareMem)
         ret = yf_write_channel(yf_processes[1].channel[0], &channel, _log);
         ASSERT_EQ(ret, YF_OK);
 
-        //close test 1's fds
-        //close(yf_processes[1].channel[0]);
-        //close(yf_processes[1].channel[1]);
+        //yf_close test 1's fds
+        //yf_close(yf_processes[1].channel[0]);
+        //yf_close(yf_processes[1].channel[1]);
         //channel 的特性，当把一对socket中一端发送给另外的proc后，就会形成，多个发送者和一个接受
         //者的连接；只有当所有这些proc关闭这端后，另外那段接受者才能收到recv=0的标志(即连接断开)
         usleep(100000);
@@ -363,13 +363,13 @@ yf_evt_driver_t * g_proc_driver = NULL;
 
 void on_exe_callback(yf_process_t* proc);
 
-char* g_normal_shell = "normal_shell";
-char* g_cat_shell = "cat_shell";
-char* g_py_shell = "py_shell";
-char* g_unexsit_exe = "unexsit_exe";
-char* g_timeout_shell = "timeout_shell";
-char* g_silent_shell = "silent_shell";
-char* g_killed_shell = "killed_shell";
+const char* g_normal_shell = "normal_shell";
+const char* g_cat_shell = "cat_shell";
+const char* g_py_shell = "py_shell";
+const char* g_unexsit_exe = "unexsit_exe";
+const char* g_timeout_shell = "timeout_shell";
+const char* g_silent_shell = "silent_shell";
+const char* g_killed_shell = "killed_shell";
 
 //1，命令字符串前后不能有空格，否则会出现 "permission denied(13) !!"
 //2，如果有参数，参数肯定需要大于1，因为第一个参数实际上是执行文件名字
@@ -383,7 +383,7 @@ yf_exec_ctx_t exec_ctx[] = {
                 NULL, NULL, YF_PROC_POPEN_R}, 
         {cat_argv[0], g_cat_shell, cat_argv, NULL, 
                 NULL, NULL, YF_PROC_POPEN_R}, 
-        {"./exe_ctx/echo.py", g_py_shell, NULL, NULL, 
+        {(char*)"./exe_ctx/echo.py", g_py_shell, NULL, NULL, 
                 NULL, NULL, YF_PROC_POPEN_R}, 
         {sleep_argv[0], g_timeout_shell, sleep_argv, NULL, 
                 NULL, NULL, YF_PROC_POPEN_R}, 
@@ -391,7 +391,7 @@ yf_exec_ctx_t exec_ctx[] = {
                 NULL, NULL, YF_PROC_DETACH}, 
         {sleep_argv[0], g_killed_shell, sleep_argv, NULL, 
                 NULL, NULL, YF_PROC_DETACH},
-        {"./exe_ctx/test_unexsit", g_unexsit_exe, NULL, NULL, 
+        {(char*)"./exe_ctx/test_unexsit", g_unexsit_exe, NULL, NULL, 
                 NULL, NULL, YF_PROC_POPEN_R}
 };
 

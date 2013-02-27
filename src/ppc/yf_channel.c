@@ -42,7 +42,7 @@ yf_int_t  yf_open_channel(yf_socket_t* fds, yf_int_t unblock1, yf_int_t unblock2
                 return YF_ERROR;
         }*/
 
-        if (fcntl(fds[0], F_SETOWN, yf_pid) == -1)
+        if (yf_fcntl(fds[0], F_SETOWN, yf_pid) == -1)
         {
                 yf_log_error(YF_LOG_ALERT, log, yf_errno,
                              "fcntl(F_SETOWN) failed");
@@ -50,7 +50,7 @@ yf_int_t  yf_open_channel(yf_socket_t* fds, yf_int_t unblock1, yf_int_t unblock2
                 return YF_ERROR;
         }
 
-        if (close_on_exe && fcntl(fds[0], F_SETFD, FD_CLOEXEC) == -1)
+        if (close_on_exe && yf_fcntl(fds[0], F_SETFD, FD_CLOEXEC) == -1)
         {
                 yf_log_error(YF_LOG_ALERT, log, yf_errno,
                              "fcntl(FD_CLOEXEC) failed");
@@ -58,10 +58,10 @@ yf_int_t  yf_open_channel(yf_socket_t* fds, yf_int_t unblock1, yf_int_t unblock2
                 return YF_ERROR;
         }
 
-        if (close_on_exe && fcntl(fds[1], F_SETFD, FD_CLOEXEC) == -1)
+        if (close_on_exe && yf_fcntl(fds[1], F_SETFD, FD_CLOEXEC) == -1)
         {
                 yf_log_error(YF_LOG_ALERT, log, yf_errno,
-                             "fcntl(FD_CLOEXEC) failed");
+                             "yf_fcntl(FD_CLOEXEC) failed");
                 yf_close_channel(fds, log);
                 return YF_ERROR;
         }
@@ -124,7 +124,7 @@ yf_write_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
         msg.msg_iov = iov;
         msg.msg_iovlen = 1;
 
-        n = sendmsg(s, &msg, 0);
+        n = yf_sendmsg(s, &msg, 0);
 
         if (n == -1)
         {
@@ -174,7 +174,7 @@ yf_read_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
         msg.msg_accrightslen = sizeof(int);
 #endif
 
-        n = recvmsg(s, &msg, 0);
+        n = yf_recvmsg(s, &msg, 0);
 
         if (n == -1)
         {
@@ -255,13 +255,13 @@ yf_read_channel(yf_socket_t s, yf_channel_t *ch, yf_log_t *log)
 void
 yf_close_channel(yf_fd_t *fd, yf_log_t *log)
 {
-        if (close(fd[0]) == -1)
+        if (yf_close(fd[0]) == -1)
         {
-                yf_log_error(YF_LOG_ALERT, log, yf_errno, "close() channel failed");
+                yf_log_error(YF_LOG_ALERT, log, yf_errno, "yf_close() channel failed");
         }
 
-        if (close(fd[1]) == -1)
+        if (yf_close(fd[1]) == -1)
         {
-                yf_log_error(YF_LOG_ALERT, log, yf_errno, "close() channel failed");
+                yf_log_error(YF_LOG_ALERT, log, yf_errno, "yf_close() channel failed");
         }
 }
