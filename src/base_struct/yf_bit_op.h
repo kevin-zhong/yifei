@@ -17,6 +17,14 @@
 
 #define  yf_cicur_add(org_val, add_val, cicur_size) yf_mod((org_val) + (add_val), (cicur_size))
 
+yf_uint_t yf_bit_cnt(yf_u64_t val);
+#define  yf_bitcnt2val(cnt) (((yf_u64_t)1) << (cnt-1))
+yf_u64_t yf_align_2pow(yf_u64_t val);
+
+#define  yf_u32tou64_merge(h, l) ((((yf_u64_t)h)<<32) | l)
+#define  yf_u32tou64_geth(v) ((v)>>32)
+#define  yf_u32tou64_getl(v) (((v)<<32)>>32)
+
 
 #ifdef  WORDS_BIGENDIAN
 #define  WORDS_LITTLE_PART  1

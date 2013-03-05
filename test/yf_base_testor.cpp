@@ -103,7 +103,7 @@ TEST_F(BaseTest, BitOp)
                         cacu_bits[offset++] = index;
                 }
                 cacu_bits[offset] = YF_END_INDEX;
-                printf("test_val=%ld have %d bits set\n", test_val[i], offset);
+                printf("test_val=%ld have %d bits set\n", (long long)test_val[i], offset);
 
                 bit_set.bit_64 = test_val[i];
                 yf_get_set_bits(&bit_set, get_bits);
@@ -206,6 +206,34 @@ TEST_F(BaseTest, List)
                 ASSERT_EQ(iter->i, NODE_NUM-1 - i);
                 ++i;
         }
+
+        //test pop
+        yf_init_list_head(&list1);
+        for (i = 0; i < NODE_NUM; ++i)
+        {
+                node[i].i = i;
+                yf_list_add_tail(&node[i].node, &list1);
+        }        
+        i = 0;
+        while ((node_iter = yf_list_pop_head(&list1)) != NULL)
+        {
+                iter = container_of(node_iter, test_list_t, node);
+                ASSERT_EQ(iter->i, i);
+                ++i;
+        }
+
+        for (i = 0; i < NODE_NUM; ++i)
+        {
+                node[i].i = i;
+                yf_list_add_head(&node[i].node, &list1);
+        }
+        i = 0;
+        while ((node_iter = yf_list_pop_tail(&list1)) != NULL)
+        {
+                iter = container_of(node_iter, test_list_t, node);
+                ASSERT_EQ(iter->i, i);
+                ++i;
+        }        
 }
 
 /*
@@ -381,7 +409,7 @@ void  test_hash()
                 hash_kyes[i].key.len = strlen(keys[i]);
                 hash_kyes[i].key_hash = yf_hash_key_lc(hash_kyes[i].key.data, hash_kyes[i].key.len);
                 hash_kyes[i].value = (void*)keys[key_size - 1 - i];
-                printf("addr=%d, key_hash=%d\n", hash_kyes[i].value, hash_kyes[i].key_hash);
+                printf("addr=%l, key_hash=%d\n", (long)hash_kyes[i].value, hash_kyes[i].key_hash);
         }
 
         yf_int_t ret = yf_hash_init(&hash_init, hash_kyes, key_size);
@@ -392,7 +420,7 @@ void  test_hash()
                 yf_uint_t key = yf_hash_key_lc((char*)keys[i], strlen(keys[i]));
                 void* find_ret = yf_hash_find(&hash_test, key, (char*)keys[i], strlen(keys[i]));
                 
-                printf("find ret addr=%d vs org=%d, key hash=%d\n", 
+                printf("find ret addr=%l vs org=%l, key hash=%d\n", 
                                 find_ret, ((void*)keys[key_size - 1 - i]), 
                                 key);
                 ASSERT_EQ(find_ret, ((void*)keys[key_size - 1 - i]));
@@ -417,6 +445,7 @@ TEST_F(BaseTest, Hash)
 TEST_F(BaseTest, NodePool)
 {
         yf_node_pool_t  node_pool;
+        yf_memzero_st(node_pool);
         
         node_pool.each_taken_size = yf_node_taken_size(sizeof(yf_u64_t));
         node_pool.total_num = 1024;
@@ -507,6 +536,65 @@ TEST_F(BaseTest, NodePool)
 }
 
 
+TEST_F(BaseTest, HNodePool)
+{
+        yf_hnpool_t* hnp = yf_hnpool_create(sizeof(yf_u64_t), 512, 10, _log);
+        assert(hnp);
+
+        typedef std::list<yf_u64_t> ListV;
+        ListV allocted_list;
+        yf_u64_t  id;
+        long  alloc_cnt = 0;
+        
+        void* new_node = NULL, *cmp_node = NULL;
+        
+        for (int i = 0; i < 4096; ++i)
+        {
+                if ((i & 255) == 0)
+                        printf("test rool_%d\n", i);
+                int add_num = random() % 1024;
+                
+                for (int j = 0; j < add_num; ++j)
+                {
+                        new_node = yf_hnpool_alloc(hnp, &id, _log);
+                        if (alloc_cnt == 5120)
+                        {
+                                ASSERT_TRUE(new_node == NULL);
+                                yf_log_debug(YF_LOG_DEBUG, _log, 0, "hnp used out...");
+                                break;
+                        }
+                        else {
+                                ASSERT_TRUE(new_node != NULL);
+                                cmp_node = yf_hnpool_id2node(hnp, id, _log);
+                                
+                                ASSERT_EQ(new_node, cmp_node);
+                                
+                                allocted_list.push_back(id);
+                                ++alloc_cnt;
+                        }
+                }
+
+                int delete_num = std::min(alloc_cnt, random() % 1024);
+                
+                for (int j = 0; j < delete_num; ++j)
+                {
+                        ListV::iterator iter = allocted_list.begin();
+                        std::advance(iter, random() % alloc_cnt);
+
+                        cmp_node = yf_hnpool_id2node(hnp, *iter, _log);
+                        ASSERT_TRUE(cmp_node != NULL);
+
+                        yf_hnpool_free(hnp, *iter, cmp_node, _log);
+                        cmp_node = yf_hnpool_id2node(hnp, *iter, _log);
+                        ASSERT_TRUE(NULL == cmp_node);
+                        
+                        allocted_list.erase(iter);
+                        --alloc_cnt;
+                }
+        }        
+}
+
+
 /*
 * slab pool
 */
@@ -558,7 +646,7 @@ TEST_F(BaseTest, SlabPool)
 TEST_F(BaseTest, IdSeed)
 {
         yf_id_seed_group_t  seed_group;
-        yf_id_seed_group_init(&seed_group);
+        yf_id_seed_group_init(&seed_group, 0);
         for (yf_u64_t i = 0; i < (((yf_u64_t)1)<<32); ++i)
         {
                 yf_u32_t alloc_id = yf_id_seed_alloc(&seed_group);
@@ -576,6 +664,7 @@ TEST_F_INIT(BaseTest, Rbtree);
 TEST_F_INIT(BaseTest, StringLog);
 TEST_F_INIT(BaseTest, Hash);
 TEST_F_INIT(BaseTest, NodePool);
+TEST_F_INIT(BaseTest, HNodePool);
 TEST_F_INIT(BaseTest, SlabPool);
 TEST_F_INIT(BaseTest, IdSeed);
 #endif

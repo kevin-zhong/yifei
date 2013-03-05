@@ -3,6 +3,27 @@
 
 yf_bit_index_t  yf_bit_indexs[65536];
 
+inline yf_uint_t yf_bit_cnt(yf_u64_t val)
+{
+        yf_uint_t cnt = 0;
+        while (val)
+        {
+                ++cnt;
+                val >>= 1;
+        }
+        return cnt;
+}
+
+inline yf_u64_t yf_align_2pow(yf_u64_t val)
+{
+        yf_uint_t bits = yf_bit_cnt(val);
+        if (yf_bitcnt2val(bits) < val)
+                ++bits;
+        
+        return yf_bitcnt2val(bits);        
+}
+
+
 void yf_init_bit_indexs()
 {
         static yf_int_t  inited = 0;

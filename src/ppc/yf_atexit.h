@@ -1,7 +1,7 @@
 #ifndef _YF_ATEXIT_H_20130204_H
 #define _YF_ATEXIT_H_20130204_H
 /*
-* author: kevin_zhong, mail:qq2000zhong@gmail.com
+* copyright@: kevin_zhong, mail:qq2000zhong@gmail.com
 * time: 20130204-15:18:13
 */
 

@@ -349,7 +349,7 @@ void  bridge_parent_init(yf_bridge_cxt_t* bridge_ctx, yf_int_t attach_task_bridg
 
         yf_log_file_flush_drive(_evt_driver, 5000, NULL);
 
-        yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, on_exe_exit_signal};
+        yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, NULL, on_exe_exit_signal};
         ASSERT_EQ(YF_OK, yf_register_singal_evt(_evt_driver, &sig_child_evt, _log));
         
         ASSERT_EQ(YF_OK, yf_attach_res_bridge(bridge, 

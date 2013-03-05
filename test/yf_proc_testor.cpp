@@ -135,7 +135,7 @@ void  empty_child_proc(void *data, yf_log_t *log)
         yf_evt_driver_init_t driver_init = {0, 128, 16, log, YF_DEFAULT_DRIVER_CB};
         yf_evt_driver_t * driver = yf_evt_driver_create(&driver_init);
 
-        yf_sig_event_t  sig_evt = {0, data, log, NULL, on_signal};
+        yf_sig_event_t  sig_evt = {0, data, NULL, log, NULL, on_signal};
 
         for (yf_signal_t* sig = child_signals; sig->signo; ++sig)
         {
@@ -459,7 +459,7 @@ TEST_F(ProcTestor, ProcEvt)
         yf_evt_driver_init_t driver_init = {0, 128, 16, _log, YF_DEFAULT_DRIVER_CB};
         g_proc_driver = yf_evt_driver_create(&driver_init);
 
-        yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, on_exe_exit_signal};
+        yf_sig_event_t  sig_child_evt = {SIGCHLD, NULL, NULL, NULL, NULL, on_exe_exit_signal};
         ASSERT_EQ(YF_OK, yf_register_singal_evt(g_proc_driver, &sig_child_evt, _log));
 
         yf_time_t  time_out = {6, 0};

@@ -1,12 +1,18 @@
 #ifndef _YF_SYS_CALL_H_20130226_H
 #define _YF_SYS_CALL_H_20130226_H
 /*
-* author: kevin_zhong, mail:qq2000zhong@gmail.com
+* copyright@: kevin_zhong, mail:qq2000zhong@gmail.com
 * time: 20130226-15:42:25
 */
 
 #include <base_struct/yf_core.h>
 #include <ppc/yf_header.h>
+
+#ifdef YF_FREEBSD
+#define yf_usleep_ret_t void
+#else
+#define yf_usleep_ret_t int
+#endif
 
 #ifndef  YF_SYS_CALL_REPTR
 
@@ -48,7 +54,7 @@
 
 #else
 
-extern int (*yf_usleep)(unsigned int us);
+extern yf_usleep_ret_t (*yf_usleep)(unsigned int us);
 extern unsigned int (*yf_sleep)(unsigned int s);
 
 extern int (*yf_close)(int fd);

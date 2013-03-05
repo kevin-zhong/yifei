@@ -9,6 +9,7 @@
 typedef  struct  yf_tm_evt_s
 {
         void*        data;
+        yf_u64_t   data2;
         yf_log_t*   log;
 
         yf_evt_driver_t*  driver;
@@ -35,8 +36,9 @@ typedef  struct yf_fd_event_s
         yf_u32_t   timeout:1;
         yf_u32_t   error:1;
         
-        void*           data;
-        yf_log_t*     log;
+        void*        data;
+        yf_u64_t   data2;
+        yf_log_t*   log;
 
         yf_evt_driver_t*  driver;
 
@@ -118,7 +120,9 @@ yf_int_t   yf_unregister_tm_evt(yf_tm_evt_t* tm_evt);
 typedef struct yf_sig_event_s
 {
         int            signo;
+        
         void*        data;
+        yf_u64_t   data2;
         yf_log_t*   log;
 
         yf_evt_driver_t*  driver;
@@ -150,8 +154,9 @@ typedef struct yf_processor_event_s
         yf_u16_t   error:1;
         yf_u16_t   exit_code:8;
 
-        void*           data;
-        yf_log_t*     log;
+        void*        data;
+        yf_u64_t   data2;
+        yf_log_t*   log;
 
         yf_evt_driver_t* driver;
         

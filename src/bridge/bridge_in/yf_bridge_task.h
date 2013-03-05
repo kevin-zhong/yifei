@@ -1,7 +1,7 @@
 #ifndef _YF_BRIDGE_TASK_H_20120812_H
 #define _YF_BRIDGE_TASK_H_20120812_H
 /*
-* author: kevin_zhong, mail:qq2000zhong@gmail.com
+* copyright@: kevin_zhong, mail:qq2000zhong@gmail.com
 * time: 20120812-13:52:16
 */
 

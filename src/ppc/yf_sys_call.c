@@ -3,7 +3,7 @@
 
 #ifdef  YF_SYS_CALL_REPTR
 
-int (*yf_usleep)(unsigned int us) = usleep;
+yf_usleep_ret_t (*yf_usleep)(unsigned int us) = usleep;
 unsigned int (*yf_sleep)(unsigned int s) = sleep;
 
 int (*yf_close)(int fd) = close;

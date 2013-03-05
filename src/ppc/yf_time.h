@@ -75,12 +75,14 @@ yf_time_data_t;
 /*
 * add when 2012-08-23(7.7) for supporting thread multi evt driver...
 */
-#if !defined (YF_MULTI_EVT_DRIVER)
-extern yf_time_data_t  yf_time_data_ins;
-#define yf_time_data (&yf_time_data_ins)
-#else
+#if defined (YF_MULTI_EVT_DRIVER) && !defined ___YF_THREAD
 yf_time_data_t* yf_time_data_addr();
 #define yf_time_data yf_time_data_addr()
+#else
+
+extern ___YF_THREAD yf_time_data_t  yf_time_data_ins;
+#define yf_time_data (&yf_time_data_ins)
+
 #endif
 
 #define yf_now_times (yf_time_data->now_times)

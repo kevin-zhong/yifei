@@ -102,6 +102,7 @@ yf_reset_pool(yf_pool_t *pool)
 {
         yf_pool_t *p;
         yf_pool_large_t *l;
+        yf_pool_cleanup_t *c;
 
         for (l = pool->large; l; l = l->next)
         {
@@ -112,6 +113,16 @@ yf_reset_pool(yf_pool_t *pool)
         }
 
         pool->large = NULL;
+
+        for (c = pool->cleanup; c; c = c->next)
+        {
+                if (c->handler)
+                {
+                        yf_log_debug1(YF_LOG_DEBUG, pool->log, 0,
+                                      "run cleanup: %p", c);
+                        c->handler(c->data);
+                }
+        }        
 
         for (p = pool; p; p = p->d.next)
         {

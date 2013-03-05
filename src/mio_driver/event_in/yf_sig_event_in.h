@@ -1,7 +1,7 @@
 #ifndef _YF_SIG_EVENT_IN_H_20120801_H
 #define _YF_SIG_EVENT_IN_H_20120801_H
 /*
-* author: kevin_zhong, mail:qq2000zhong@gmail.com
+* copyright@: kevin_zhong, mail:qq2000zhong@gmail.com
 * time: 20120801-21:39:26
 */
 

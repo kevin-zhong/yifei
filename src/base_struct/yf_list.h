@@ -136,6 +136,29 @@ static inline void __yf_list_splice(yf_list_part_t *list, yf_list_part_t *part)
         at->prev = last;
 }
 
+/*
+* pop head or tail
+*/
+static inline yf_list_part_t* yf_list_pop_head(yf_list_part_t* part)
+{
+        if (yf_list_empty(part))
+                return NULL;
+
+        yf_list_part_t* head = part->next;
+        __yf_list_del(part, head->next);
+        return head;
+}
+
+static inline yf_list_part_t* yf_list_pop_tail(yf_list_part_t* part)
+{
+        if (yf_list_empty(part))
+                return NULL;
+
+        yf_list_part_t* tail = part->prev;
+        __yf_list_del(tail->prev, part);
+        return tail;
+}
+
 /**
  * yf_list_splice - move all nodes of lists to part
  * @list: the new list to op.

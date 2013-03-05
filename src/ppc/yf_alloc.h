@@ -18,7 +18,7 @@ extern yf_uint_t yf_cacheline_size;
 
 #define  yf_align_mem(a) yf_align(a, YF_ALIGNMENT)
 
-#define  yf_mem_off(a, o) ((void*)(((char*)a) + o))
+#define  yf_mem_off(a, o) ((void*)(((char*)a) + (o)))
 
 #define  yf_alloc(len)  ({void* pr = malloc(len); if (pr) yf_memzero(pr, len); pr;})
 #define  yf_realloc  realloc

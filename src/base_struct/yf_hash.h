@@ -38,7 +38,7 @@ typedef struct {
     yf_uint_t        max_size;
     yf_uint_t        bucket_size;
 
-    char             *name;
+    const char      *name;
     yf_pool_t       *pool;
     yf_pool_t       *temp_pool;
 } yf_hash_init_t;

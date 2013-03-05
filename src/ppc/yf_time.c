@@ -9,10 +9,7 @@ yf_times_t  yf_start_times;
                 time_data->log_time.len = sizeof(time_data->log_buf); \
         }
 
-#if !defined (YF_MULTI_EVT_DRIVER)
-yf_time_data_t  yf_time_data_ins;
-
-#else
+#if defined (YF_MULTI_EVT_DRIVER) && !defined ___YF_THREAD
 
 YF_THREAD_DEF_KEY_ONCE(__key, __init_done, __thread_init);
 
@@ -26,6 +23,9 @@ yf_time_data_t* yf_time_data_addr()
         yf_init_timedata(time_data);
         return time_data;
 }
+
+#else
+___YF_THREAD yf_time_data_t  yf_time_data_ins;
 #endif
 
 static void yf_update_log_time(yf_log_t* log);

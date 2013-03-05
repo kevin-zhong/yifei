@@ -1,7 +1,7 @@
 #ifndef _YF_LOG_FILE_H_20130209_H
 #define _YF_LOG_FILE_H_20130209_H
 /*
-* author: kevin_zhong, mail:qq2000zhong@gmail.com
+* copyright@: kevin_zhong, mail:qq2000zhong@gmail.com
 * time: 20130209-13:39
 */
 

@@ -1,7 +1,11 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
+#ifdef PAGESIZE
+yf_uint_t yf_pagesize = PAGESIZE;
+#else
 yf_uint_t yf_pagesize = 4096;
+#endif
 yf_uint_t yf_cacheline_size;
 
 
