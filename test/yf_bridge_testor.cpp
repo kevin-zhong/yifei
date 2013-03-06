@@ -296,7 +296,7 @@ yf_bridge_t* g_child2parent_bridges[TEST_CHILD_NUM] = {NULL};
 
 void  evt_driven_child(yf_bridge_t* bridge, yf_int_t is_proc, yf_log_t *log)
 {
-        yf_evt_driver_init_t driver_init = {0, 128, 16, log, YF_DEFAULT_DRIVER_CB};
+        yf_evt_driver_init_t driver_init = {0, 128, 64, log, YF_DEFAULT_DRIVER_CB};
         driver_init.stop_cb = aflter_stop_evt_driver;
         if (is_proc)
                 driver_init.poll_cb = on_child_poll_evt_driver;
@@ -340,7 +340,7 @@ void  bridge_parent_init(yf_bridge_cxt_t* bridge_ctx, yf_int_t attach_task_bridg
         ASSERT_TRUE(bridge != NULL);
         g_bridge = bridge;
 
-        yf_evt_driver_init_t driver_init = {0, 128, 16, _log, YF_DEFAULT_DRIVER_CB};
+        yf_evt_driver_init_t driver_init = {0, 128, 64, _log, YF_DEFAULT_DRIVER_CB};
         driver_init.poll_cb = on_poll_evt_driver;
         driver_init.stop_cb = aflter_stop_evt_driver;
         

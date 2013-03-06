@@ -32,9 +32,10 @@ typedef  struct yf_fd_event_s
         
         yf_u32_t   type:2;
         yf_u32_t   ready:1;
-        yf_u32_t   eof:1;
+        yf_u32_t   eof:1;//if recv, check eof+error
         yf_u32_t   timeout:1;
         yf_u32_t   error:1;
+        yf_u32_t   shutdown:1;//if send, check shutdown+error
         
         void*        data;
         yf_u64_t   data2;

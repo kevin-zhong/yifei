@@ -96,7 +96,7 @@ AC_SUBST(TEST_DIR)
 
 # thread option
 AC_ARG_ENABLE([thread],
-	[AS_HELP_STRING([--disable-thread], [disable thread])],
+	[AS_HELP_STRING([--disable-thread], [disable thread, not include log thread])],
 	[], [AC_DEFINE([YF_THREADS], [1], ["enable thread"])])
 
 # sys call reptr option

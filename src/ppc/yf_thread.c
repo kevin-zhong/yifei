@@ -1,8 +1,13 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
-static yf_uint_t nthreads;
-static yf_uint_t max_threads;
+/*
+* nthreads not include main thread, 
+* and if YF_THREADS disabled, then max_threads=1(for log thread)
+*/
+
+static yf_uint_t nthreads = 0;
+static yf_uint_t max_threads = 1;
 static yf_int_t thread_sig_mask = 0;
 static pthread_attr_t thr_attr;
 
@@ -34,7 +39,7 @@ static yf_thread_value_t _yf_thread_exe_wrapper(void *arg)
                 assert(rc == 0);
         }
 
-#if defined (YF_MULTI_EVT_DRIVER)
+#if (YF_THREADS)
         //should init time..., add on 20130223 03:49
         yf_update_time(NULL, NULL, NULL);
 #endif
@@ -80,7 +85,13 @@ yf_init_threads(int n, size_t size, yf_int_t sig_maskall, yf_log_t *log)
 {
         int err;
 
+#if (YF_THREADS)
         max_threads = n;
+#else
+        assert(n == 1);
+        max_threads = 1;
+#endif
+
         yf_main_thread_id = yf_thread_self();
         thread_sig_mask = sig_maskall;
 

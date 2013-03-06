@@ -9,7 +9,7 @@ yf_times_t  yf_start_times;
                 time_data->log_time.len = sizeof(time_data->log_buf); \
         }
 
-#if defined (YF_MULTI_EVT_DRIVER) && !defined ___YF_THREAD
+#if (YF_THREADS) && defined ___YF_THREAD_UNSUPPORT
 
 YF_THREAD_DEF_KEY_ONCE(__key, __init_done, __thread_init);
 

@@ -55,12 +55,14 @@ typedef pthread_once_t yf_tls_once_t;
 
 #if defined(__linux__) || defined(__WIN32__)
 
-#ifdef YF_MULTI_EVT_DRIVER
+#if YF_THREADS
 #define ___YF_THREAD __thread
 #else
 #define ___YF_THREAD
 #endif
 
+#else
+#define ___YF_THREAD_UNSUPPORT
 #endif
 
 #define YF_MUTEX_LIGHT     0
