@@ -15,8 +15,42 @@
 
 #endif
 
+#define _yf_unix_rcheck(n, size, rev, ctx, err) \
+                yf_log_debug3(YF_LOG_DEBUG, rev->log, 0, \
+                               "recv: fd:%d %d of %d", rev->fd, n, size); \
+                if (n == 0) \
+                { \
+                        rev->ready = 0; \
+                        rev->eof = 1; \
+                        return n; \
+                } \
+                else if (n > 0) \
+                { \
+                        if ((size_t)n < size) \
+                                rev->ready = 0; \
+                        ctx->rw_cnt += n; \
+                        return n; \
+                } \
+                err = yf_socket_errno; \
+                if (YF_EAGAIN(err)) \
+                { \
+                        rev->ready = 0; \
+                        yf_log_debug0(YF_LOG_DEBUG, rev->log, err, \
+                                       "recv() not ready"); \
+                        return YF_AGAIN; \
+                } \
+                else if (err == YF_EINTR) \
+                        continue; \
+                else { \
+                        rev->ready = 0; \
+                        rev->error = 1; \
+                        yf_log_error(YF_LOG_ERR, rev->log, err, "recv() failed"); \
+                        return YF_ERROR; \
+                }        
+
 ssize_t
-yf_unix_recv(fd_rw_ctx_t *ctx, char *buf, size_t size)
+yf_unix_recvfrom(fd_rw_ctx_t *ctx, char *buf, size_t size
+                , int flags, struct sockaddr *from, socklen_t *fromlen)
 {
         ssize_t n;
         yf_err_t err;
@@ -25,51 +59,29 @@ yf_unix_recv(fd_rw_ctx_t *ctx, char *buf, size_t size)
         rev = ctx->fd_evt;
 
         do {
-                n = yf_recv(rev->fd, buf, size, 0);
-
-                yf_log_debug3(YF_LOG_DEBUG, rev->log, 0,
-                               "recv: fd:%d %d of %d", rev->fd, n, size);
-
-                if (n == 0)
-                {
-                        rev->ready = 0;
-                        rev->eof = 1;
-                        return n;
-                }
-                else if (n > 0)
-                {
-                        if ((size_t)n < size)
-                        {
-                                rev->ready = 0;
-                        }
-                        ctx->rw_cnt += n;
-                        return n;
-                }
-
-                err = yf_socket_errno;
-
-                if (YF_EAGAIN(err) || err == YF_EINTR)
-                {
-                        yf_log_debug0(YF_LOG_DEBUG, rev->log, err,
-                                       "recv() not ready");
-                        n = YF_AGAIN;
-                }
-                else {
-                        n = YF_ERROR;
-                        yf_log_error(YF_LOG_ERR, rev->log, err, "recv() failed");
-                        break;
-                }
+                n = yf_recvfrom(rev->fd, buf, size, flags, from, fromlen);
+                _yf_unix_rcheck(n, size, rev, ctx, err);
         } 
         while (err == YF_EINTR);
+}
 
-        rev->ready = 0;
 
-        if (n == YF_ERROR)
-        {
-                rev->error = 1;
-        }
+ssize_t yf_unix_readv(fd_rw_ctx_t *ctx, const struct iovec *iov, int iovcnt)
+{
+        ssize_t n, size = 0;
+        yf_err_t err;
+        yf_fd_event_t *rev;
+        int i = 0;
 
-        return n;
+        for (i = 0; i < iovcnt; ++i)
+                size += iov[i].iov_len;
+        rev = ctx->fd_evt;
+
+        do {
+                n = yf_readv(rev->fd, iov, iovcnt);
+                _yf_unix_rcheck(n, size, rev, ctx, err);
+        } 
+        while (err == YF_EINTR);        
 }
 
 
@@ -194,8 +206,44 @@ yf_readv_chain(fd_rw_ctx_t *ctx, yf_chain_t *chain)
         return n;
 }
 
+
+#define _yf_unix_wcheck(n, size, wev, ctx, err) \
+                yf_log_debug3(YF_LOG_DEBUG, wev->log, 0, \
+                               "send: fd:%d %d of %d", wev->fd, n, size); \
+                if (n > 0) \
+                { \
+                        if (n < (ssize_t)size) \
+                                wev->ready = 0; \
+                        ctx->rw_cnt += n; \
+                        return n; \
+                } \
+                err = yf_socket_errno; \
+                if (n == 0) \
+                { \
+                        yf_log_error(YF_LOG_ALERT, wev->log, err, "send() returned zero"); \
+                        wev->ready = 0; \
+                        return n; \
+                } \
+                if (YF_EAGAIN(err) || err == YF_EINTR) \
+                { \
+                        wev->ready = 0; \
+                        yf_log_debug0(YF_LOG_DEBUG, wev->log, err, \
+                                       "send() not ready"); \
+                        if (YF_EAGAIN(err)) \
+                        { \
+                                return YF_AGAIN; \
+                        } \
+                } \
+                else { \
+                        wev->error = 1; \
+                        yf_log_error(YF_LOG_ERR, wev->log, err, "send() failed"); \
+                        return YF_ERROR; \
+                }
+
+
 ssize_t
-yf_unix_send(fd_rw_ctx_t *ctx, char *buf, size_t size)
+yf_unix_sendto(fd_rw_ctx_t *ctx, char *buf, size_t size
+                , int flags, const struct sockaddr *to, socklen_t tolen)
 {
         ssize_t n;
         yf_err_t err;
@@ -205,49 +253,28 @@ yf_unix_send(fd_rw_ctx_t *ctx, char *buf, size_t size)
 
         for (;; )
         {
-                n = yf_send(wev->fd, buf, size, 0);
+                n = yf_sendto(wev->fd, buf, size, flags, to, tolen);
+                _yf_unix_wcheck(n, size, wev, ctx, err);
+        }
+}
 
-                yf_log_debug3(YF_LOG_DEBUG, wev->log, 0,
-                               "send: fd:%d %d of %d", wev->fd, n, size);
 
-                if (n > 0)
-                {
-                        if (n < (ssize_t)size)
-                        {
-                                wev->ready = 0;
-                        }
+ssize_t yf_unix_writev(fd_rw_ctx_t *ctx, const struct iovec *iov, int iovcnt)
+{
+        int i = 0;
+        ssize_t n, size = 0;
+        yf_err_t err;
+        yf_fd_event_t *wev;
 
-                        ctx->rw_cnt += n;
+        for (i = 0; i < iovcnt; ++i)
+                size += iov[i].iov_len;
 
-                        return n;
-                }
+        wev = ctx->fd_evt;
 
-                err = yf_socket_errno;
-
-                if (n == 0)
-                {
-                        yf_log_error(YF_LOG_ALERT, wev->log, err, "send() returned zero");
-                        wev->ready = 0;
-                        return n;
-                }
-
-                if (YF_EAGAIN(err) || err == YF_EINTR)
-                {
-                        wev->ready = 0;
-
-                        yf_log_debug0(YF_LOG_DEBUG, wev->log, err,
-                                       "send() not ready");
-
-                        if (YF_EAGAIN(err))
-                        {
-                                return YF_AGAIN;
-                        }
-                }
-                else {
-                        wev->error = 1;
-                        yf_log_error(YF_LOG_ERR, wev->log, err, "send() failed");
-                        return YF_ERROR;
-                }
+        for (;; )
+        {
+                n = yf_writev(wev->fd, iov, iovcnt);
+                _yf_unix_wcheck(n, size, wev, ctx, err);
         }
 }
 

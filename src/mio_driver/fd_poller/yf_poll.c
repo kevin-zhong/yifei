@@ -320,12 +320,14 @@ static yf_int_t yf_poll_dispatch(yf_fd_poll_t *poller)
                 {
                         found = 1;
                         link_evt = &fd_evt->read;
+                        link_evt->evt.ready = 1;
                         yf_list_add_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
                 }
                 if (revents & POLLOUT)
                 {
                         found = 1;
                         link_evt = &fd_evt->write;
+                        link_evt->evt.ready = 1;
                         yf_list_add_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
                 }
 

@@ -115,6 +115,15 @@ void yf_evt_driver_destory(yf_evt_driver_t* driver)
         yf_free(evt_driver);
 }
 
+
+yf_evt_driver_init_t* yf_evt_driver_ctx(yf_evt_driver_t* driver)
+{
+        yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        assert(yf_check_be_magic(evt_driver));
+        return &evt_driver->driver_ctx;
+}
+
+
 void yf_evt_driver_stop(yf_evt_driver_t* driver)
 {
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
@@ -166,8 +175,6 @@ void yf_evt_driver_start(yf_evt_driver_t* driver)
                         yf_list_del(pos);
                         
                         iner_evt = container_of(pos, yf_fd_evt_link_t, ready_linker);
-                        
-                        iner_evt->evt.ready = 1;
                         
                         if (iner_evt->timeset)
                         {

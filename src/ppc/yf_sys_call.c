@@ -27,6 +27,9 @@ int (*yf_socket)(int domain, int type, int protocol) = socket;
 int (*yf_connect)(int sockfd, const struct sockaddr *serv_addr, socklen_t addrlen) = connect;
 
 int (*yf_fcntl)(int fd, int cmd, ...) = fcntl;
+
+int (*yf_getsockopt)(int sockfd, int level, int optname,
+              void *optval, socklen_t *optlen) = getsockopt;
 int (*yf_setsockopt)(int s, int level, int optname, 
                 const void *optval, socklen_t optlen) = setsockopt;
 

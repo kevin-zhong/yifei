@@ -117,7 +117,6 @@ yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t*  driver, yf_fd_t fd
         alloc_evt->write.evt.type = YF_WEVT;
         alloc_evt->write.evt.log = log;
         alloc_evt->write.evt.driver = driver;
-        alloc_evt->write.evt.ready = 1;
         alloc_evt->write.index = YF_INVALID_INDEX;
 
         if (fd_evt_driver->evt_poll->poll_cls->actions.add &&
@@ -266,6 +265,29 @@ yf_int_t  yf_unregister_fd_evt(yf_fd_event_t* pevent)
         iner_evt->last_active_op_index = 0;
         iner_evt->active = 0;
         return  YF_OK;
+}
+
+
+yf_fd_event_t* yf_get_fd_evt(yf_evt_driver_t* driver, yf_fd_t fd, yf_u32_t type)
+{
+        if (type != YF_REVT && type != YF_WEVT)
+                return NULL;
+        
+        yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
+        assert(yf_check_be_magic(evt_driver));
+
+        yf_fd_evt_driver_in_t* fd_evt_driver = &evt_driver->fd_driver;
+
+        yf_fd_evt_in_t* fd_evt = fd_evt_driver->pevents + fd;
+        if (!fd_evt->use_flag)
+        {
+                yf_log_error(YF_LOG_ERR, fd_evt_driver->evt_poll->log, 
+                                0, "fd=%d not in use, evts_capcity=%d", 
+                                fd, fd_evt_driver->evts_capcity);
+                return NULL;
+        }
+
+        return  type == YF_REVT ? &fd_evt->read.evt : &fd_evt->write.evt;
 }
 
 

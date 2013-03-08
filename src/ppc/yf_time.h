@@ -28,8 +28,8 @@ yf_time_t;
 
 #define yf_ms_2_utime(tm_val, utime) ({(utime)->tv_sec = (tm_val) / 1000; \
                 (utime)->tv_usec = (tm_val) % 1000 * 1000;})
-#define yf_ms_2_time(tm_val, utime) ({(utime)->tv_sec = (tm_val) / 1000; \
-                (utime)->tv_msec = (tm_val) % 1000;})
+#define yf_ms_2_time(tm_val, time) ({(time)->tv_sec = (tm_val) / 1000; \
+                (time)->tv_msec = (tm_val) % 1000;})
 
 #define yf_time_diff_ms(tm1, tm2) (((yf_s64_t)((tm1)->tv_sec - (tm2)->tv_sec)) * 1000 \
                 + (tm1)->tv_msec - (tm2)->tv_msec)

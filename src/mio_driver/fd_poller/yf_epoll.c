@@ -266,12 +266,14 @@ static yf_int_t yf_epoll_dispatch(yf_fd_poll_t *epoller)
                 {
                         found = 1;
                         link_evt = &fd_evt->read;
+                        link_evt->evt.ready = 1;
                         yf_list_add_tail(&link_evt->ready_linker, &epoller->ctx->ready_list);
                 }
                 if (revents & EPOLLOUT)
                 {
                         found = 1;
                         link_evt = &fd_evt->write;
+                        link_evt->evt.ready = 1;
                         yf_list_add_tail(&link_evt->ready_linker, &epoller->ctx->ready_list);
                 }
 

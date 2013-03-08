@@ -33,9 +33,9 @@ typedef  struct yf_fd_event_s
         yf_u32_t   type:2;
         yf_u32_t   ready:1;
         yf_u32_t   eof:1;//if recv, check eof+error
-        yf_u32_t   timeout:1;
+        yf_u32_t   timeout:1;//just in fd_evt_handle check this
         yf_u32_t   error:1;
-        yf_u32_t   shutdown:1;//if send, check shutdown+error
+        yf_u32_t   shutdown:1;//if send+recv, check shutdown+error
         
         void*        data;
         yf_u64_t   data2;
@@ -77,6 +77,8 @@ yf_evt_driver_init_t;
 yf_evt_driver_t*  yf_evt_driver_create(yf_evt_driver_init_t* driver_init);
 void yf_evt_driver_destory(yf_evt_driver_t* driver);
 
+yf_evt_driver_init_t* yf_evt_driver_ctx(yf_evt_driver_t* driver);
+
 void yf_evt_driver_stop(yf_evt_driver_t* driver);
 void yf_evt_driver_start(yf_evt_driver_t* driver);
 
@@ -94,6 +96,11 @@ yf_int_t  yf_register_fd_evt(yf_fd_event_t* pevent, yf_time_t  *time_out);
 *unregister used before event happen, means interupt fd poll
 */
 yf_int_t  yf_unregister_fd_evt(yf_fd_event_t* pevent);
+
+/*
+* just after alloc, then you can use this func
+*/
+yf_fd_event_t* yf_get_fd_evt(yf_evt_driver_t* driver, yf_fd_t fd, yf_u32_t type);
 
 
 #define FD_TIMER_NEW 0x01

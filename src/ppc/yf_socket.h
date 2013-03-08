@@ -138,10 +138,10 @@ typedef int  yf_socket_t;
 #define yf_socket_n        "socket()"
 
 
-#define yf_nonblocking(s)  yf_fcntl(s, F_SETFL, fcntl(s, F_GETFL) | O_NONBLOCK)
+#define yf_nonblocking(s)  yf_fcntl(s, F_SETFL, yf_fcntl(s, F_GETFL) | O_NONBLOCK)
 #define yf_nonblocking_n   "yf_fcntl(O_NONBLOCK)"
 
-#define yf_blocking(s)     yf_fcntl(s, F_SETFL, fcntl(s, F_GETFL) & ~O_NONBLOCK)
+#define yf_blocking(s)     yf_fcntl(s, F_SETFL, yf_fcntl(s, F_GETFL) & ~O_NONBLOCK)
 #define yf_blocking_n      "yf_fcntl(!O_NONBLOCK)"
 
 

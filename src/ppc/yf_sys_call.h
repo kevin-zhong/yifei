@@ -43,6 +43,8 @@
 #define yf_gethostbyname  gethostbyname
 #define yf_getaddrinfo       getaddrinfo
 
+#define yf_getsockopt  getsockopt
+
 #ifdef  HAVE_SYS_SELECT_H
 #define yf_select  select
 #endif
@@ -78,6 +80,9 @@ extern int (*yf_socket)(int domain, int type, int protocol);
 extern int (*yf_connect)(int sockfd, const struct sockaddr *serv_addr, socklen_t addrlen);
 
 extern int (*yf_fcntl)(int fd, int cmd, ...);
+
+extern int (*yf_getsockopt)(int sockfd, int level, int optname,
+              void *optval, socklen_t *optlen);
 extern int (*yf_setsockopt)(int s, int level, int optname, 
                 const void *optval, socklen_t optlen);
 
@@ -100,7 +105,6 @@ extern struct hostent* (*yf_gethostbyname2)(const char *name, int af);
 #define yf_recv(a, b, c, d)   yf_recvfrom(a, b, c, d, 0, 0)
 #define yf_send(a, b, c, d)   yf_sendto(a, b, c, d, 0, 0)
 #define yf_msleep(ms)        yf_usleep(ms * 1000)
-#define yf_getsockopt  getsockopt
 
 #endif
 
