@@ -4,7 +4,33 @@ Name
 yifei -- a project named with the name of my daughter
 
 功能包括：
-1，unix system 系统调用等薄包装
+1，库基础依赖api及数据结构
+	i)  unix system 系统调用等薄包装 -> src/ppc/
+			主要屏蔽unix，linux各系统之间的差异，比如；socket等等
+			
+	ii) system相关的一些资源包装：   -> src/ppc/
+			比如：进程相关，线程相关，信号，共享内存，时间戳（时间缓存+多线程夺取update）
+				锁，快速锁（利用与cpu平台相关的汇编代码生成，比pthread的锁要快，平稳）
+				atexit 升级（系统自带atexit太弱）
+				
+	iii)非常丰富且效率极高的数据结构 -> src/base_struct
+			比如：[内存池]: yifei整个库的基石，除了内存分配，还起到映射寻址等重要功能；
+											包括3类 - 1)定长,定数量; 2)定长，数量自动伸缩; 
+																//支持从id到节点的快速映射(非常迅速，避免使用者建立id->节点的映射map)
+															  3)变成(类似stl的内存池)；4)多次分配，一次销毁(来源于nginx)
+						[位操作]: 非常基础且非常重要的库，基本上处处用到，主要功能有：
+											位操作，对齐，寻址，数字合并拆分，计数
+						[id分配器]：非常基础且非常重要的库，用于生成空间/时间唯一且值很大的的64位id，
+											用于各个地方，标志各个事务（比如内存分配的节点，定时器，协程等等）
+											且在多线程下，效率不降低（really? how? 看代码）
+						[list]：  浸入式的slist，list，和linux内核用的链表基本一致，
+											特点：浸入|异常灵活|效率奇高(stl::list易用但差太远，鄙视下)
+						[log]:    最重要的特点：留下了扩展接口，支持自由扩展，参考 log_ext
+						[string]: 带len的string，且有一组非常丰富的函数（来源于nginx）
+						[rbtree]: 暂时还没用到，感觉尽量少用复杂数据结构，能用内存池和list能解决最好
+						
+			
+
 2，类似libevent的一个跨linux/solars/FreeBSD/SunOS/Darwin等
 	 unix system平台的一个异步事务驱动器，包括事件类型：
 	 	i)	fd 句柄
@@ -35,7 +61,9 @@ Usage
 ====
 此项目是一个工具库，可用于unix后台异步server的搭建
 
-具体使用方法见 test/ 目录中的单元测试程序，主要有两个：
+具体使用方法见 test/ 目录中的单元测试程序，主要有三个：
+
+yf_base_testor.cpp
 yf_driver_testor.cpp
 yf_bridge_testor.cpp
 

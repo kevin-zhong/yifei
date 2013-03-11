@@ -2,7 +2,7 @@
 #define _YF_ID_SEED_H_20130222_H
 /*
 * copyright@: kevin_zhong, mail:qq2000zhong@gmail.com
-* time: 20130222-16:54:55
+* time: 20130222-20:54:55
 */
 
 #include <base_struct/yf_core.h>

@@ -2,7 +2,7 @@
 #define _YF_ATEXIT_H_20130204_H
 /*
 * copyright@: kevin_zhong, mail:qq2000zhong@gmail.com
-* time: 20130204-15:18:13
+* time: 20130204-19:18:13
 */
 
 #include <base_struct/yf_core.h>
