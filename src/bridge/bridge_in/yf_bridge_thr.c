@@ -112,7 +112,7 @@ static yf_int_t yf_bridge_thr_attach_res_bridge(yf_bridge_in_t* bridge
                 ret = yf_bridge_channel_init(bridge_thr->channels + i1, 
                                 bridge, bridge_thr->socks + 2*i1, 
                                 evt_driver, 1, i1, log);
-                if (ret != YF_OK)
+                if (unlikely(ret != YF_OK))
                 {
                         yf_log_error(YF_LOG_WARN, log, 0, "init channel_%d failed", i1);
                         return ret;

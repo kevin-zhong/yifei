@@ -62,13 +62,15 @@ typedef struct tm  yf_stm_t;
 
 extern  yf_times_t  yf_start_times;
 
+#define YF_TIME_BUF_LEN sizeof("70/01/01 12:00:00 000")-1
+
 typedef struct
 {
         yf_times_t  now_times;
         yf_str_t      log_time;
         yf_utime_t  last_clock_utime;
         yf_utime_t  last_real_wall_utime;
-        char           log_buf[sizeof("70/01/01 12:00:00 000")-1];
+        char           log_buf[YF_TIME_BUF_LEN];
 }
 yf_time_data_t;
 

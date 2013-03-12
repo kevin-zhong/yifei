@@ -152,7 +152,7 @@ static yf_int_t yf_epoll_activate(yf_fd_poll_t *epoller, yf_fd_evt_link_t *ev)
         ee.data.fd = fd_evt->fd;
         ee.events = event | EPOLLET;
 
-        if (epoll_ctl(epoll_ctx->kpfd, op, fd_evt->fd, &ee) < 0)
+        if (unlikely(epoll_ctl(epoll_ctx->kpfd, op, fd_evt->fd, &ee) < 0))
         { 
                 yf_log_error(YF_LOG_ERR, ev->evt.log, 
                                 yf_errno, "epoll ctl fd failed, fd=%d", fd_evt->fd);
@@ -231,7 +231,7 @@ static yf_int_t yf_epoll_dispatch(yf_fd_poll_t *epoller)
                 }
 #endif
 
-                if (revents & (EPOLLERR|EPOLLHUP)) {
+                if (unlikely(revents & (EPOLLERR|EPOLLHUP))) {
                         yf_log_debug2(YF_LOG_DEBUG, epoller->log, 0,
                                 "epoll_wait() error on fd:%d ev:%04XD",
                                 fd, revents);
@@ -284,7 +284,7 @@ static yf_int_t yf_epoll_dispatch(yf_fd_poll_t *epoller)
                 }
         }
 
-        if (ready != nready)
+        if (unlikely(ready != nready))
         {
                 yf_log_error(YF_LOG_ALERT, epoller->log, 0,
                               "epoll ready != events: %d:%d", ready, nready);

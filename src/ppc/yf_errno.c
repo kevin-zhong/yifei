@@ -1,7 +1,7 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
-#define  YF_MAX_ERR_NO  1000
+#define  YF_MAX_ERR_NO  256
 
 static yf_str_t* yf_err_str_list;
 static yf_err_t  yf_err_no_end;
@@ -16,7 +16,7 @@ yf_int_t yf_strerror_init(void)
 {
         yf_err_no_end = 0;
         
-        yf_int_t list_size = 128;
+        yf_int_t list_size = YF_MAX_ERR_NO;
         yf_err_str_list = yf_alloc(sizeof(yf_str_t) * list_size);
         CHECK_RV(yf_err_str_list == NULL, YF_ERROR);
         
@@ -25,16 +25,19 @@ yf_int_t yf_strerror_init(void)
                 yf_errno = 0;
                 char* p_errstr = strerror(yf_err_no_end);
                 
-                if (yf_errno == YF_EINVAL
-                        || p_errstr == NULL
-                        || yf_strncmp(p_errstr, "Unknown error", 13) == 0)
-                        break;
-                
                 if (yf_err_no_end >= list_size)
                 {
                         list_size = list_size*3/2;
                         yf_err_str_list = yf_realloc(yf_err_str_list, list_size);
                         CHECK_RV(yf_err_str_list == NULL, YF_ERROR);
+                }
+
+                if (yf_errno == YF_EINVAL
+                        || p_errstr == NULL
+                        || yf_strncmp(p_errstr, "Unknown error", 13) == 0)
+                {
+                        yf_err_str_list[yf_err_no_end] = yf_unknown_err_str;
+                        continue;
                 }
 
                 size_t  len = yf_strlen(p_errstr);

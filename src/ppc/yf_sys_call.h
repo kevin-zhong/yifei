@@ -36,6 +36,7 @@
 
 #define yf_socket    socket
 #define yf_connect  connect
+#define yf_accept    accept
 
 #define yf_fcntl       fcntl
 #define yf_setsockopt        setsockopt
@@ -78,6 +79,7 @@ extern ssize_t (*yf_writev)(int fd, const struct iovec *vector, int count);
 
 extern int (*yf_socket)(int domain, int type, int protocol);
 extern int (*yf_connect)(int sockfd, const struct sockaddr *serv_addr, socklen_t addrlen);
+extern int (*yf_accept)(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 extern int (*yf_fcntl)(int fd, int cmd, ...);
 

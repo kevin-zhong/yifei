@@ -1,7 +1,7 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
-static yf_str_t err_levels[] = {
+yf_str_t err_levels[] = {
         yf_null_str,
         yf_str("emerg"),
         yf_str("alert"),
@@ -88,10 +88,30 @@ static void _log_default_log_msg(yf_log_t* yf_log, yf_log_msg_t* logmsg)
         yf_write(log_ctx->file->fd, logmsg->log_buf, logmsg->log_len);
 }
 
+char* yf_log_pre_default(yf_log_t* yf_log, char* buf, char* last
+                , yf_uint_t level, const char* file, int line)
+{
+        char* p = NULL;
+        
+        yf_memcpy(buf, yf_log_time.data, yf_log_time.len);
+        p = buf + yf_log_time.len;
+
+        p = yf_snprintf(p, last - p, " [%s:%d][%V]", 
+                        file, line, 
+                        &err_levels[level]);
+
+        /* pid#tid */
+        p = yf_snprintf(p, last - p, "[%P#" YF_TID_T_FMT "]: ",
+                        yf_log_pid, yf_log_tid);
+        return p;
+}
+
+
 yf_log_actions_t  yf_log_actions = {
         _log_default_open, 
         _log_default_log_close, 
         _log_default_alloc_buf, 
+        yf_log_pre_default, 
         _log_default_log_msg
 };
 
@@ -120,7 +140,8 @@ yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
         
         char *errstr = log_actions->alloc_buf(log);
 
-        if (errstr == NULL) {
+        if (unlikely(errstr == NULL)) 
+        {
                 yf_unlock(&log->lock);
                 return;
         }
@@ -131,17 +152,12 @@ yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
 
         last = errstr + log->each_log_max_len;
 
-        yf_memcpy(errstr, yf_log_time.data, yf_log_time.len);
-
-        p = errstr + yf_log_time.len;
-
-        p = yf_snprintf(p, last - p, " [%s:%d][%V]", 
-                        _file_, _line_, 
-                        &err_levels[level]);
-
-        /* pid#tid */
-        p = yf_snprintf(p, last - p, "[%P#" YF_TID_T_FMT "]: ",
-                        yf_log_pid, yf_log_tid);
+        p = log_actions->log_pre(log, errstr, last, level, _file_, _line_);
+        if (unlikely(p == NULL))
+        {
+                yf_unlock(&log->lock);
+                return;
+        }
 
         log_msg.msg_buf = p;
 
@@ -159,7 +175,7 @@ yf_log_error_core(yf_uint_t level, yf_log_t *log, const char* _file_, int _line_
                 p = yf_log_errno(p, last, err);
         }
 
-        if (p > last - YF_LINEFEED_SIZE)
+        if (unlikely(p > last - YF_LINEFEED_SIZE))
         {
                 p = last - YF_LINEFEED_SIZE;
         }

@@ -62,7 +62,7 @@ yf_unix_recvfrom(fd_rw_ctx_t *ctx, char *buf, size_t size
                 n = yf_recvfrom(rev->fd, buf, size, flags, from, fromlen);
                 _yf_unix_rcheck(n, size, rev, ctx, err);
         } 
-        while (err == YF_EINTR);
+        while (1);
 }
 
 
@@ -81,7 +81,7 @@ ssize_t yf_unix_readv(fd_rw_ctx_t *ctx, const struct iovec *iov, int iovcnt)
                 n = yf_readv(rev->fd, iov, iovcnt);
                 _yf_unix_rcheck(n, size, rev, ctx, err);
         } 
-        while (err == YF_EINTR);        
+        while (1);        
 }
 
 

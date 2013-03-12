@@ -12,12 +12,14 @@ yf_int_t   yf_init_fd_driver(yf_fd_evt_driver_in_t* fd_evt_driver
 
         fd_evt_driver->evts_capcity = nfds;
         fd_evt_driver->pevents = yf_alloc(sizeof(yf_fd_evt_in_t) * nfds);
-        if (fd_evt_driver->pevents == NULL) {
+        if (unlikely(fd_evt_driver->pevents == NULL)) 
+        {
                 yf_log_error(YF_LOG_ERR, log, yf_errno, "alloc pevents failed");
                 return YF_ERROR;
         }
 
-        if (poll_type < 0 || poll_type >= yf_fd_poller_cls_num) {
+        if (unlikely(poll_type < 0 || poll_type >= yf_fd_poller_cls_num)) 
+        {
                 yf_log_error(YF_LOG_ERR, log, 0, "poll type=%d illegal", poll_type);
                 goto init_failed;
         }
@@ -83,7 +85,7 @@ yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t*  driver, yf_fd_t fd
         if (log == NULL)
                 log = fd_evt_driver->evt_poll->log;
 
-        if (fd >= fd_evt_driver->evts_capcity)
+        if (unlikely(fd >= fd_evt_driver->evts_capcity))
         {
                 yf_log_error(YF_LOG_ERR, log, 0, "too many open fds, fd=%d, evts_capcity=%d", 
                                 fd, fd_evt_driver->evts_capcity);
@@ -91,7 +93,7 @@ yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t*  driver, yf_fd_t fd
         }
 
         yf_fd_evt_in_t* alloc_evt = fd_evt_driver->pevents + fd;
-        if (alloc_evt->use_flag)
+        if (unlikely(alloc_evt->use_flag))
         {
                 yf_log_error(YF_LOG_ERR, log, 0, "fd=%d still in use, evts_capcity=%d", 
                                 fd, fd_evt_driver->evts_capcity);
@@ -119,9 +121,9 @@ yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t*  driver, yf_fd_t fd
         alloc_evt->write.evt.driver = driver;
         alloc_evt->write.index = YF_INVALID_INDEX;
 
-        if (fd_evt_driver->evt_poll->poll_cls->actions.add &&
+        if (unlikely(fd_evt_driver->evt_poll->poll_cls->actions.add &&
                 fd_evt_driver->evt_poll->poll_cls->actions.add(
-                        fd_evt_driver->evt_poll, alloc_evt) != YF_OK)
+                        fd_evt_driver->evt_poll, alloc_evt) != YF_OK))
         {
                 yf_log_error(YF_LOG_ERR, log, 0, "fd=%d add poll failed", fd);
                 
@@ -148,7 +150,7 @@ yf_int_t  yf_free_fd_evt(yf_fd_event_t* pread, yf_fd_event_t* pwrite)
 
         yf_log_t* log = pread->log;
 
-        if (!alloc_evt->use_flag)
+        if (unlikely(!alloc_evt->use_flag))
         {
                 yf_log_error(YF_LOG_ERR, log, 0, "fd=%d not in use, evts_capcity=%d", 
                                 pread->fd, fd_evt_driver->evts_capcity);
@@ -160,9 +162,9 @@ yf_int_t  yf_free_fd_evt(yf_fd_event_t* pread, yf_fd_event_t* pwrite)
         yf_unregister_fd_evt(pread);
         yf_unregister_fd_evt(pwrite);
 
-        if (fd_evt_driver->evt_poll->poll_cls->actions.del
+        if (unlikely(fd_evt_driver->evt_poll->poll_cls->actions.del
                 && fd_evt_driver->evt_poll->poll_cls->actions.del(
-                        fd_evt_driver->evt_poll, alloc_evt) != YF_OK)
+                        fd_evt_driver->evt_poll, alloc_evt) != YF_OK))
         {
                 yf_log_error(YF_LOG_ERR, log, 0, "fd=%d del poll failed", 
                                 pread->fd);
@@ -201,8 +203,8 @@ yf_int_t  yf_register_fd_evt(yf_fd_event_t* pevent, yf_time_t  *time_out)
 
         if (!iner_evt->polled && fd_evt_driver->evt_poll->poll_cls->actions.activate)
         {
-                if (fd_evt_driver->evt_poll->poll_cls->actions.activate(
-                        fd_evt_driver->evt_poll, iner_evt) != YF_OK)
+                if (unlikely(fd_evt_driver->evt_poll->poll_cls->actions.activate(
+                        fd_evt_driver->evt_poll, iner_evt) != YF_OK))
                 {
                         yf_log_error(YF_LOG_ERR, pevent->log, 0, "fd=%d, evt=%V activate poll failed", 
                                         pevent->fd, &yf_evt_tn(pevent));    
@@ -248,8 +250,8 @@ yf_int_t  yf_unregister_fd_evt(yf_fd_event_t* pevent)
         if (pevent->ready && iner_evt->polled && 
                         fd_evt_driver->evt_poll->poll_cls->actions.deactivate)
         {
-                if (fd_evt_driver->evt_poll->poll_cls->actions.deactivate(
-                        fd_evt_driver->evt_poll, iner_evt) != YF_OK)
+                if (unlikely(fd_evt_driver->evt_poll->poll_cls->actions.deactivate(
+                        fd_evt_driver->evt_poll, iner_evt) != YF_OK))
                 {
                         yf_log_error(YF_LOG_ERR, pevent->log, 0, "fd=%d, evt=%V "
                                         " deactivate poll failed", 
@@ -304,6 +306,7 @@ yf_int_t  yf_fd_evt_timer_ctl(yf_fd_event_t* pevent
                 {
                         yf_set_timer_val(iner_evt, *time_out, 1);
                         yf_add_timer(tm_evt_driver, &iner_evt->timer, pevent->log);
+                        iner_evt->timeset = 1;
                         break;
                 }
 

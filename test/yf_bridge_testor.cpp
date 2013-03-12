@@ -34,8 +34,9 @@ struct  TaskTest
 
 TEST_F(BridgeTestor, TaskQueue)
 {
-        yf_log_file_init_ctx_t log_file_init = {1024*128, 1024*1024*64, 8, NULL};
+        yf_log_file_init_ctx_t log_file_init = {1024*128, 1024*1024*64, 8, NULL, "%t [%f:%l]-[%v]<%p>"};
         yf_log_t* log_tmp = yf_log_open(YF_LOG_DEBUG, 8192, &log_file_init);
+        assert(log_tmp);
         
         char  tq_buf[102400];
         task_info_t  task_info;
@@ -495,9 +496,11 @@ int main(int argc, char **argv)
         assert(ret == YF_OK);
         
         yf_log_file_init(NULL);
-        yf_log_file_init_ctx_t log_file_init = {1024*128, 1024*1024*64, 8, "dir/bridge.log"};
+        yf_log_file_init_ctx_t log_file_init = {1024*128, 1024*1024*64, 8, 
+                        "dir/bridge.log", "%t [%f:%l]-[%v]<%p#%d>"};
 
         _log = yf_log_open(YF_LOG_DEBUG, 8192, (void*)&log_file_init);
+        assert(_log);
         _mem_pool = yf_create_pool(102400, _log);
 
         yf_init_bit_indexs();

@@ -51,7 +51,7 @@ void  yf_init_node_pool(yf_node_pool_t* node_pool, yf_log_t* log)
 //return NULL if no free...
 void* yf_alloc_node_from_pool(yf_node_pool_t* node_pool, yf_log_t* log)
 {
-        if (node_pool->free_size == 0)
+        if (unlikely(node_pool->free_size == 0))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "node_pool used out, total_num=%d", 
                                 node_pool->total_num);

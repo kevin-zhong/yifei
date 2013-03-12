@@ -19,7 +19,7 @@ yf_memalign(size_t alignment, size_t size, yf_log_t *log)
 
         err = posix_memalign(&p, alignment, size);
 
-        if (err)
+        if (unlikely(err))
         {
                 yf_log_error(YF_LOG_CRIT, log, yf_errno, "posix_memalign failed, size=%d", size);
                 p = NULL;
@@ -36,7 +36,7 @@ yf_memalign(size_t alignment, size_t size, yf_log_t *log)
         void *p;
 
         p = memalign(alignment, size);
-        if (p == NULL)
+        if (unlikely(p == NULL))
         {
                 yf_log_error(YF_LOG_CRIT, log, yf_errno, "memalign failed, size=%d", size);
         }

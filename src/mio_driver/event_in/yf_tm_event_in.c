@@ -32,7 +32,8 @@ yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_evt_driver
         yf_s32_t i;
         
         tm_evt_driver->pevents = yf_alloc(sizeof(yf_tm_evt_link_t) * nstimers);
-        if (tm_evt_driver->pevents == NULL) {
+        if (unlikely(tm_evt_driver->pevents == NULL)) 
+        {
                 yf_log_error(YF_LOG_ERR, log, yf_errno, "alloc tm pevents failed");
                 return YF_ERROR;
         }
@@ -165,7 +166,7 @@ yf_int_t   yf_del_timer(yf_tm_evt_driver_in_t* tm_evt_driver
                 assert(tm_evt_driver->stm_evts_num >= 0);
         }
 
-        yf_log_debug2(YF_LOG_DEBUG, log, 0, "fd tm num=%d, single tm num=%d", 
+        yf_log_debug2(YF_LOG_DEBUG, log, 0, "after del timer, fd tm num=%d, single tm num=%d", 
                         tm_evt_driver->fdtm_evts_num, 
                         tm_evt_driver->stm_evts_num);
 

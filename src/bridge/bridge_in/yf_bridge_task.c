@@ -57,7 +57,7 @@ yf_int_t  yf_task_push(yf_task_queue_t* queue, task_info_t* task_info
         size_t write_off;
 
         //note, must > , then can push sucess...
-        if (free_cap <= require_len)
+        if (unlikely(free_cap <= require_len))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "tq free_cap=%d, require_len=%d, push fail", 
                                 free_cap, require_len);
@@ -97,7 +97,7 @@ yf_int_t  yf_task_pop(yf_task_queue_t* queue, task_info_t* task_info
                         (char*)&task_head, sizeof(yf_task_head_t), log));
         assert(yf_check_magic(task_head.magic));
 
-        if (task_len && *task_len < task_head.task_len)
+        if (unlikely(task_len && *task_len < task_head.task_len))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "res buf size=%d not big enough<%d", 
                                 *task_len, task_head.task_len);

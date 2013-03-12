@@ -15,7 +15,7 @@ static void _id_seed_group_update(yf_id_seed_group_t* seed_group, yf_u32_t slice
         seed_group->seed = _id_seed_group_used;
         _id_seed_group_used += _ID_SEED_SLICE_SIZE * slice_multi;
         
-        if (_id_seed_group_used >= (1<<31))
+        if (unlikely(_id_seed_group_used >= (1<<31)))
         {
                 _id_seed_group_used = yf_align(
                                 yf_now_times.wall_utime.tv_sec / _id_seed_start_factor, 
@@ -34,7 +34,7 @@ static void _id_seed_group_update(yf_id_seed_group_t* seed_group, yf_u32_t slice
 
 yf_int_t yf_id_seed_group_init(yf_id_seed_group_t* seed_group, yf_u32_t slice_size)
 {
-        if (slice_size > _ID_SEED_SLICE_SIZE * 255)
+        if (unlikely(slice_size > _ID_SEED_SLICE_SIZE * 255))
         {
                 fprintf(stdout, "too larget slice size=%d, max=%d\n", 
                                 slice_size, _ID_SEED_SLICE_SIZE * 255);
@@ -76,7 +76,7 @@ inline yf_u32_t  yf_id_seed_alloc(yf_id_seed_group_t* seed_group)
         yf_u32_t seed_new = seed_group->seed;
         seed_group->seed += 1;
         
-        if (yf_mod(seed_group->seed, _ID_SEED_SLICE_SIZE) == 0)
+        if (unlikely(yf_mod(seed_group->seed, _ID_SEED_SLICE_SIZE) == 0))
         {
                 seed_group->used_slice += 1;
                 

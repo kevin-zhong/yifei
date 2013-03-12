@@ -9,7 +9,7 @@ void _yf_lock_in(yf_lock_t* lock, yf_atomic_t v)
 
         for (;;)
         {
-                if (yf_trylock_v(lock, v))
+                if (likely(yf_trylock_v(lock, v)))
                 {
                         return;
                 }

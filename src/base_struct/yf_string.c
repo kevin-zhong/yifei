@@ -27,9 +27,6 @@ yf_cpystrn(char *dst, char *src, size_t n)
 }
 
 
-static char *
-yf_sprintf_num(char *buf, char *last, yf_u64_t ui64, char zero, yf_uint_t hexadecimal, yf_uint_t width);
-
 #ifndef  HAVE_STRCASECMP
 yf_int_t yf_strcasecmp(char *s1, char *s2)
 {
@@ -445,8 +442,8 @@ yf_vslprintf(char *buf, char *last, const char *fmt, va_list args)
 }
 
 
-static char *
-yf_sprintf_num(char *buf, char *last, yf_u64_t ui64, char zero, yf_uint_t hexadecimal, yf_uint_t width)
+char * yf_sprintf_num(char *buf, char *last, yf_u64_t ui64
+        , char zero, yf_uint_t hexadecimal, yf_uint_t width)
 {
         char *p, temp[YF_INT64_LEN + 1];
 

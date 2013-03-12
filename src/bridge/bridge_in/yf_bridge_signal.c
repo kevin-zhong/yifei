@@ -119,7 +119,7 @@ yf_int_t  yf_bridge_channel_signal(yf_bridge_channel_t* bc
         channel.command = YF_CMD_DATA;
         yf_int_t ret = yf_write_channel(fd, &channel, log);
         
-        if (ret != YF_OK)
+        if (unlikely(ret != YF_OK))
         {
                 if (ret != YF_AGAIN)
                 {
@@ -159,7 +159,7 @@ yf_int_t  yf_bridge_channel_wait(yf_bridge_channel_t* bc
                                         "bridge channel wait empty, fd=%d", fd);
                         break;
                 }
-                else if (ret == 0)
+                else if (unlikely(ret == 0))
                 {
                         yf_log_debug1(YF_LOG_DEBUG, log, 0, "channel broken, fd=%d", fd);
                         //TODO...
@@ -169,7 +169,7 @@ yf_int_t  yf_bridge_channel_wait(yf_bridge_channel_t* bc
                 yf_log_debug2(YF_LOG_DEBUG, log, 0, 
                                 "bridge channel wait a cmd, fd=%d, cmd=%d", 
                                 fd, channel.command);
-                if (channel.command != YF_CMD_DATA)
+                if (unlikely(channel.command != YF_CMD_DATA))
                         ;//TODO
 
                 if (blocked && tmp_block)

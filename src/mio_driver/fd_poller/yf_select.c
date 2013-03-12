@@ -81,7 +81,7 @@ static yf_int_t yf_select_uninit(yf_fd_poll_t *poller)
 
 static yf_int_t yf_select_activate(yf_fd_poll_t *poller, yf_fd_evt_link_t *evt)
 {
-        if (evt->index != YF_INVALID_INDEX)
+        if (unlikely(evt->index != YF_INVALID_INDEX))
         {
                 yf_log_error(YF_LOG_ALERT, evt->evt.log, 0, 
                                 "select fd=%d is already set, index=%d", 
@@ -133,7 +133,7 @@ static yf_int_t yf_select_deactivate(yf_fd_poll_t *poller, yf_fd_evt_link_t *evt
 
         evt->polled = 0;
 
-        if (evt->index == YF_INVALID_INDEX)
+        if (unlikely(evt->index == YF_INVALID_INDEX))
         {
                 return YF_OK;
         }
@@ -229,7 +229,7 @@ static yf_int_t yf_select_dispatch(yf_fd_poll_t *poller)
         yf_log_debug1(YF_LOG_DEBUG, poller->log, 0,
                        "select ready %d", ready);
 
-        if (err)
+        if (unlikely(err))
         {
                 yf_uint_t level;
 
@@ -294,7 +294,7 @@ static yf_int_t yf_select_dispatch(yf_fd_poll_t *poller)
                 }
         }
         
-        if (ready != nready)
+        if (unlikely(ready != nready))
         {
                 yf_log_error(YF_LOG_ALERT, poller->log, 0,
                               "select ready != events: %d:%d", ready, nready);

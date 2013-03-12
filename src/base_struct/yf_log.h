@@ -29,6 +29,8 @@ struct yf_log_s
         void* log_actions;
 };
 
+extern yf_str_t err_levels[];
+
 
 /*********************************/
 
@@ -177,6 +179,10 @@ typedef struct yf_log_msg_s
 yf_log_msg_t;
 
 
+char* yf_log_pre_default(yf_log_t* yf_log, char* buf, char* last
+                , yf_uint_t level, const char* file, int line);
+
+
 struct yf_log_actions_s
 {
         yf_log_t* (*log_open)(yf_uint_t log_level, yf_u32_t log_max_len, void* init_ctx);
@@ -184,6 +190,14 @@ struct yf_log_actions_s
         
         //buf len must>=each_log_max_len
         char* (*alloc_buf)(yf_log_t* yf_log);
+
+        /*
+        * default handle=yf_log_pre_default, like this:
+        * 13/03/12 15:51:57 860 [./mio_driver/event_in/yf_tm_event_in.c:93][debug][22359#1991850624]
+        * ret the last used buf pos ptr, if ret NULL, this log should be droped
+        */
+        char* (*log_pre)(yf_log_t* yf_log, char* buf, char* last
+                        , yf_uint_t level, const char* file, int line);
 
         void (*log_msg)(yf_log_t* yf_log, yf_log_msg_t* logmsg);
 };

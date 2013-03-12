@@ -76,13 +76,13 @@ yf_int_t  yf_sock_get_port(const yf_sock_addr_t *sa)
         {
         case AF_INET: {
                 struct sockaddr_in *sin = (struct sockaddr_in *)sa;
-                return sin->sin_port;
+                return ntohs(sin->sin_port);
         }
 
 #ifdef  IPV6
         case AF_INET6: {
                 struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
-                return sin6->sin6_port;
+                return ntohs(sin6->sin6_port);
         }
 #endif
         }
@@ -97,14 +97,14 @@ void yf_sock_set_port(yf_sock_addr_t *sa, yf_int_t port)
         {
         case AF_INET: {
                 struct sockaddr_in *sin = (struct sockaddr_in *)sa;
-                sin->sin_port = port;
+                sin->sin_port = htons(port);
                 return;
         }
 
 #ifdef  IPV6
         case AF_INET6: {
                 struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
-                sin6->sin6_port = port;
+                sin6->sin6_port = htons(port);
                 return;
         }
 #endif

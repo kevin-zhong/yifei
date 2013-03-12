@@ -6,10 +6,15 @@
 
 #define yf_evt_driver_t yf_u64_t
 
+#define YF_EVT_DATA union { \
+                yf_u64_t  data2; \
+                yf_u32_t  data3[2]; \
+        }
+
 typedef  struct  yf_tm_evt_s
 {
         void*        data;
-        yf_u64_t   data2;
+        YF_EVT_DATA;
         yf_log_t*   log;
 
         yf_evt_driver_t*  driver;
@@ -38,7 +43,7 @@ typedef  struct yf_fd_event_s
         yf_u32_t   shutdown:1;//if send+recv, check shutdown+error
         
         void*        data;
-        yf_u64_t   data2;
+        YF_EVT_DATA;
         yf_log_t*   log;
 
         yf_evt_driver_t*  driver;
@@ -130,7 +135,7 @@ typedef struct yf_sig_event_s
         int            signo;
         
         void*        data;
-        yf_u64_t   data2;
+        YF_EVT_DATA;
         yf_log_t*   log;
 
         yf_evt_driver_t*  driver;
@@ -163,7 +168,7 @@ typedef struct yf_processor_event_s
         yf_u16_t   exit_code:8;
 
         void*        data;
-        yf_u64_t   data2;
+        YF_EVT_DATA;
         yf_log_t*   log;
 
         yf_evt_driver_t* driver;

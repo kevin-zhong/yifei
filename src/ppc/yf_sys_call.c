@@ -25,6 +25,7 @@ ssize_t (*yf_writev)(int fd, const struct iovec *vector, int count) = writev;
 
 int (*yf_socket)(int domain, int type, int protocol) = socket;
 int (*yf_connect)(int sockfd, const struct sockaddr *serv_addr, socklen_t addrlen) = connect;
+int (*yf_accept)(int sockfd, struct sockaddr *addr, socklen_t *addrlen) = accept;
 
 int (*yf_fcntl)(int fd, int cmd, ...) = fcntl;
 

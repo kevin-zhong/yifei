@@ -121,4 +121,7 @@ char *yf_vslprintf(char *buf, char *last, const char *fmt, va_list args);
 
 #define yf_vsnprintf(buf, max, fmt, args)  yf_vslprintf(buf, buf + (max), fmt, args)
 
+char *yf_sprintf_num(char *buf, char *last, yf_u64_t ui64
+                , char zero, yf_uint_t hexadecimal, yf_uint_t width);
+
 #endif

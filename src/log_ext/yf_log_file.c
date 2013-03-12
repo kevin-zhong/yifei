@@ -3,6 +3,23 @@
 #include <mio_driver/yf_event.h>
 #include <log_ext/yf_log_file.h>
 
+#define _LOG_FILE_HANDLE_SYS 1
+#define _LOG_FILE_HANDLE_CPY 2
+#define _LOG_FILE_HANDLE_DEF 3
+
+typedef struct
+{
+        yf_int_t  handle_type;
+        union {
+                yf_str_t  cpy_str;
+                char       handle_symbol;
+        };
+}
+_log_file_handle_ctx_t;
+
+#define _LOG_FILE_MAX_HANDEL_CTX 16
+
+
 typedef struct
 {
         yf_log_t log_meta;
@@ -10,15 +27,19 @@ typedef struct
         
         yf_file_t*  file;
         char*        log_buf;
-        yf_uint_t  log_offset;
+        yf_uint_t   log_offset;
 
         yf_time_t  last_write_tm;
         yf_lock_t  write_lock;//protect write_buf, write_offset, write_waiting
         char*        write_buf;
         yf_uint_t  write_offset;
         yf_uint_t  write_waiting:1;//if waiting..., cant switch buf or yf_close...
+
+        yf_log_file_handle_t  handles[26];
+        _log_file_handle_ctx_t  handle_ctxs[_LOG_FILE_MAX_HANDEL_CTX];
 }
 _log_file_ctx_t;
+
 
 static yf_u64_t     _log_file_write_waiting_bits = 0;
 static yf_mutex_t* _log_file_write_mutex = NULL;
@@ -28,6 +49,8 @@ static _log_file_ctx_t  _log_file_ctxs[32];
 static yf_lock_t  _open_lock;
 
 static yf_int_t  _log_file_rotate(_log_file_ctx_t* log_ctx);
+
+static yf_int_t  _log_file_handle_ctx_parse(_log_file_ctx_t* log_ctx);
 
 
 static yf_log_t* _log_file_open(yf_uint_t log_level
@@ -66,6 +89,9 @@ static yf_log_t* _log_file_open(yf_uint_t log_level
 
         yf_memzero(log_ctx, sizeof(_log_file_ctx_t));
         log_ctx->init_ctx = *log_init_ctx;
+
+        if (_log_file_handle_ctx_parse(log_ctx) != YF_OK)
+                goto failed;
         
         if (log_init_ctx->log_file_path == NULL)
         {
@@ -118,6 +144,7 @@ failed:
         return NULL;
 }
 
+
 static void _log_file_close(yf_log_t* yf_log)
 {
         _log_file_ctx_t* log_ctx = container_of(yf_log, _log_file_ctx_t, log_meta);
@@ -152,12 +179,18 @@ static void _log_file_close(yf_log_t* yf_log)
         yf_unlock(&_open_lock);
 }
 
+
 //buf len must>=each_log_max_len
 static char* _log_file_alloc_buf(yf_log_t* yf_log)
 {
         _log_file_ctx_t* log_ctx = container_of(yf_log, _log_file_ctx_t, log_meta);
         return log_ctx->log_buf + log_ctx->log_offset;
 }
+
+
+static char* _log_file_pre_deal(yf_log_t* yf_log, char* buf, char* last
+                , yf_uint_t level, const char* file, int line);
+
 
 static void _log_file_msg(yf_log_t* yf_log, yf_log_msg_t* logmsg)
 {
@@ -166,8 +199,8 @@ static void _log_file_msg(yf_log_t* yf_log, yf_log_msg_t* logmsg)
         assert(log_index < YF_ARRAY_SIZE(_log_file_ctxs));
         
         log_ctx->log_offset += logmsg->log_len;
-        if (log_ctx->log_offset + log_ctx->log_meta.each_log_max_len 
-                        < log_ctx->init_ctx.log_cache_size)
+        if (likely(log_ctx->log_offset + log_ctx->log_meta.each_log_max_len 
+                        < log_ctx->init_ctx.log_cache_size))
                         return;
 
         yf_lock(&log_ctx->write_lock);
@@ -204,10 +237,12 @@ static void _log_file_msg(yf_log_t* yf_log, yf_log_msg_t* logmsg)
         yf_munlock(_log_file_write_mutex);
 }
 
+
 yf_log_actions_t  _log_file_actions = {
         _log_file_open, 
         _log_file_close, 
         _log_file_alloc_buf, 
+        _log_file_pre_deal, 
         _log_file_msg
 };
 
@@ -219,7 +254,7 @@ static  void _log_file_write_impl(_log_file_ctx_t* log_ctx)
         //cause write_waiting=True, so write buf+offset is safe
         yf_write(log_ctx->file->fd, log_ctx->write_buf, log_ctx->write_offset);
 
-        if (log_ctx->file->fd != yf_stderr)
+        if (likely(log_ctx->file->fd != yf_stderr))
         {
                 struct stat  file_stat;
                 if (fstat(log_ctx->file->fd, &file_stat) == 0)
@@ -461,5 +496,166 @@ static yf_int_t  _log_file_rotate(_log_file_ctx_t* log_ctx)
         }
 
         return  YF_OK;
+}
+
+/*
+* log head format
+*/
+#define _log_file_is_sys_symbol(s) ((s)=='t' || (s)=='p' || (s)=='f' || (s)=='l' || (s)=='v' || (s)=='d')
+
+static yf_int_t  _log_file_handle_ctx_parse(_log_file_ctx_t* log_ctx)
+{
+        char* format = (char*)log_ctx->init_ctx.log_pre_format;
+        if (format == NULL)
+                return YF_OK;
+
+        yf_int_t  index = 0, type = 0;
+        _log_file_handle_ctx_t* hctx = NULL;
+        char *pre, *now = format;
+        char  symbol;
+        
+        while (*now)
+        {
+                hctx = log_ctx->handle_ctxs + index;
+                
+                if (*now == '%')
+                {
+                        symbol = *++now;
+                        if (!symbol)
+                                break;
+                        if (symbol < 'a' || symbol > 'z')
+                        {
+                                fprintf(stderr, "[warn] err symbol '%c' in log head format\n", symbol);
+                                return YF_ERROR;
+                        }
+                        
+                        hctx->handle_symbol = symbol - 'a';//caution
+                        if (_log_file_is_sys_symbol(symbol))
+                        {
+                                hctx->handle_type = _LOG_FILE_HANDLE_SYS;
+                        }
+                        else {
+                                hctx->handle_type = _LOG_FILE_HANDLE_DEF;
+                        }
+                        
+                        ++index;
+                        ++now;
+                }
+                else {
+                        pre = now;
+                        for (++now; *now && *now != '%'; ++now)
+                                ;
+                        hctx->handle_type = _LOG_FILE_HANDLE_CPY;
+                        hctx->cpy_str.data = pre;
+                        hctx->cpy_str.len = now - pre;
+
+                        ++index;
+                }
+        }
+        return YF_OK;
+}
+
+
+static char* _log_file_pre_deal(yf_log_t* yf_log, char* buf, char* last
+                , yf_uint_t level, const char* file, int line)
+{
+        _log_file_ctx_t* log_ctx = container_of(yf_log, _log_file_ctx_t, log_meta);
+        if (log_ctx->init_ctx.log_pre_format == NULL)
+                return yf_log_pre_default(yf_log, buf, last, level, file, line);
+
+        int rlen = 0, tlen;
+#define __log_file_cpy(data, len) \
+                rlen = yf_min(last - buf, len); \
+                buf = yf_cpymem(buf, data, rlen);
+
+        yf_log_file_handle_t handle;
+        _log_file_handle_ctx_t* hctx;
+        yf_str_t* str;
+        
+        for (hctx = log_ctx->handle_ctxs; hctx->handle_type; ++hctx)
+        {
+                switch (hctx->handle_type)
+                {
+                        case _LOG_FILE_HANDLE_SYS:
+                        {
+                                switch (hctx->handle_symbol + 'a')
+                                {
+                                        case 't':
+                                                str = &yf_log_time;
+                                                __log_file_cpy(str->data, str->len);
+                                                break;
+                                        case 'p':
+                                                buf = yf_sprintf_num(buf, last, yf_log_pid, 0, 0, 0);
+                                                break;
+                                        case 'f':
+                                                tlen = yf_strlen(file);
+                                                __log_file_cpy(file, tlen);
+                                                break;
+                                        case 'l':
+                                                buf = yf_sprintf_num(buf, last, line, 0, 0, 0);
+                                                break;
+                                        case 'v':
+                                                str = &err_levels[level];
+                                                __log_file_cpy(str->data, str->len);
+                                                break;
+                                        case 'd':
+                                                buf = yf_sprintf_num(buf, last, yf_log_tid, 0, 0, 0);
+                                                break;
+                                        default:
+                                                assert(0);
+                                                break;
+                                }
+                                break;
+                        }
+                        case _LOG_FILE_HANDLE_CPY:
+                        {
+                                __log_file_cpy(hctx->cpy_str.data, hctx->cpy_str.len);
+                                break;
+                        }
+                        case _LOG_FILE_HANDLE_DEF:
+                        {
+                                handle = log_ctx->handles[hctx->handle_symbol];
+                                if (likely(handle))
+                                {
+                                        buf = handle(buf, last, level);
+                                }
+                                else {
+                                        __log_file_cpy("__", 2);
+                                }
+                                break;
+                        }
+                        default:
+                                assert(0);
+                                break;
+                }
+        }
+        return  buf;
+}
+
+
+yf_int_t yf_log_file_add_handle(yf_log_t* log, char symbol, yf_log_file_handle_t h)
+{
+        _log_file_ctx_t* log_ctx = container_of(log, _log_file_ctx_t, log_meta);
+        
+        yf_lock(&log_ctx->write_lock);
+        if (log_ctx->init_ctx.log_pre_format == NULL)
+                return  YF_OK;
+
+        if (symbol < 'a' || symbol > 'z')
+        {
+                fprintf(stderr, "[warn] err symbol %c\n", symbol);
+                yf_unlock(&log_ctx->write_lock);
+                return YF_ERROR;
+        }
+        if (log_ctx->handles[symbol - 'a'])
+        {
+                fprintf(stderr, "[warn] symbol %c have handle already\n", symbol);
+                yf_unlock(&log_ctx->write_lock);
+                return YF_ERROR;
+        }
+
+        log_ctx->handles[symbol - 'a'] = h;
+        yf_unlock(&log_ctx->write_lock);
+        return YF_OK;
 }
 

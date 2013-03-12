@@ -144,7 +144,7 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         yf_bridge_in_t* bridge_in = (yf_bridge_in_t*)bridge;
         assert(yf_check_be_magic(bridge_in));
 
-        if (len > bridge_in->ctx.max_task_size)
+        if (unlikely(len > bridge_in->ctx.max_task_size))
         {
                 yf_log_error(YF_LOG_ERR, log, 0, "task len=%d too big > max_task_size=%d", 
                                 len, bridge_in->ctx.max_task_size);
@@ -163,7 +163,7 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         }
 
         task_ctx = yf_alloc_node_from_pool(&bridge_in->task_cb_info_pool, log);
-        if (task_ctx == NULL)
+        if (unlikely(task_ctx == NULL))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "alloc task cb failed");
                 return -1;
@@ -176,7 +176,7 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         task_id = yf_get_id_by_node(&bridge_in->task_cb_info_pool, task_ctx, log);
         
         ret = bridge_in->lock_tq(bridge_in, &tq, &child_no, log);
-        if (ret != YF_OK)
+        if (unlikely(ret != YF_OK))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "lock tq failed");
                 goto failed;
@@ -188,7 +188,7 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         if (bridge_in->parent_evt_driver)
         {
                 ret = yf_alloc_tm_evt(bridge_in->parent_evt_driver, &task_ctx->tm_evt, log);
-                if (ret != YF_OK)
+                if (unlikely(ret != YF_OK))
                 {
                         yf_log_error(YF_LOG_WARN, log, 0, "alloc tm evt failed");
                         goto failed;
@@ -211,7 +211,7 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         task_info.timeout_ms = yf_min(1<<20, timeout_ms);
 
         ret = yf_task_push(tq, &task_info, task, len, log);
-        if (ret != YF_OK)
+        if (unlikely(ret != YF_OK))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "yf_task_push failed");
                 goto failed;
@@ -370,7 +370,7 @@ yf_int_t yf_send_task_res_in(yf_bridge_in_t* bridge_in
         yf_int_t child_no = bridge_in->child_no(bridge_in, log);
 
         ret = bridge_in->lock_res_tq(bridge_in, &tq, &child_no, log);
-        if (ret != YF_OK)
+        if (unlikely(ret != YF_OK))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "lock res tq failed");
                 return YF_ERROR;
@@ -396,7 +396,7 @@ yf_int_t yf_send_task_res_in(yf_bridge_in_t* bridge_in
         if (bridge_in->unlock_res_tq)
                 bridge_in->unlock_res_tq(bridge_in, tq, child_no, log);
 
-        if (ret != YF_OK)
+        if (unlikely(ret != YF_OK))
         {
                 yf_log_error(YF_LOG_WARN, log, 0, "task res id=%L by child_%d send back failed", 
                         task_info->id, child_no);
@@ -442,7 +442,7 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
                 task_len = bridge_in->ctx.max_task_size;
                 
                 ret = bridge_in->lock_tq(bridge_in, &tq, &child_no, log);
-                if (ret != YF_OK)
+                if (unlikely(ret != YF_OK))
                 {
                         yf_log_error(YF_LOG_WARN, log, 0, "lock tq failed");
                         return;
@@ -453,7 +453,7 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
                 if (bridge_in->unlock_tq)
                         bridge_in->unlock_tq(bridge_in, tq, child_no, log);
 
-                if (ret == YF_OK)
+                if (likely(ret == YF_OK))
                 {
                         yf_real_walltime(&walltime);
                         
@@ -463,7 +463,7 @@ void  yf_bridge_on_task_valiable(yf_bridge_in_t* bridge_in
                                         "task id=%L recevied by child_%d success, diff_ms=%L", 
                                         task_info.id, child_no, diff_ms);
                         
-                        if (task_info.timeout_ms && diff_ms > task_info.timeout_ms)
+                        if (unlikely(task_info.timeout_ms && diff_ms > task_info.timeout_ms))
                         {
                                 yf_log_error(YF_LOG_WARN, log, 0, 
                                                 "timeout task id=%L recevied by child_%d, send timeout resp", 
@@ -510,7 +510,7 @@ void  yf_bridge_on_task_res_valiable(yf_bridge_in_t* bridge_in
                 task_len = bridge_in->ctx.max_task_size;
                 
                 ret = bridge_in->lock_res_tq(bridge_in, &tq, &child_no, log);
-                if (ret != YF_OK)
+                if (unlikely(ret != YF_OK))
                 {
                         yf_log_error(YF_LOG_WARN, log, 0, "lock tq failed");
                         return;
@@ -521,11 +521,11 @@ void  yf_bridge_on_task_res_valiable(yf_bridge_in_t* bridge_in
                 if (bridge_in->unlock_res_tq)
                         bridge_in->unlock_res_tq(bridge_in, tq, child_no, log);
 
-                if (ret == YF_OK)
+                if (likely(ret == YF_OK))
                 {
                         task_ctx = yf_get_node_by_id(&bridge_in->task_cb_info_pool, 
                                         task_info.id, log);
-                        if (task_ctx == NULL)
+                        if (unlikely(task_ctx == NULL))
                         {
                                 yf_log_error(YF_LOG_WARN, log, 0, 
                                         "task res id=%L sent by child_%d cant found now", 
