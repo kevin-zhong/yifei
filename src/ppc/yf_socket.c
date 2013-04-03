@@ -172,15 +172,107 @@ yf_sock_len_t  yf_sock_len(yf_sock_addr_t *sa)
 }
 
 
-int  __yf_tcp_nocork(yf_socket_t s, int tcp_nocork)
+yf_u32_t  yf_sock_hash(const yf_sock_addr_t *sa)
+{
+        switch (sa->sa_family)
+        {
+        case AF_INET: {
+                struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+                return (yf_u32_t)sin->sin_addr.s_addr + sin->sin_port;
+        }
+
+#ifdef  IPV6
+        case AF_INET6: {
+                struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
+                return yf_hash_key((char*)&sin6->sin6_addr, sizeof(sin6->sin6_addr))
+                                + sin6->sin6_port;
+        }
+#endif
+
+#ifdef  AF_LOCAL
+        case AF_LOCAL: {
+                struct sockaddr_un *unp = (struct sockaddr_un *)sa;
+                return yf_hash_key((unp)->sun_path, strlen((unp)->sun_path));
+        }
+#endif
+
+        default:
+                return 0;
+        }        
+}
+
+
+yf_int_t   yf_sock_cmp(const yf_sock_addr_t *s1, const yf_sock_addr_t *s2)
+{
+        yf_int_t  ret = s1->sa_family - s2->sa_family;
+        if (ret != 0)
+                return ret;
+
+        switch (s1->sa_family)
+        {
+        case AF_INET: {
+                struct sockaddr_in *sin1 = (struct sockaddr_in *)s1;
+                struct sockaddr_in *sin2 = (struct sockaddr_in *)s2;
+
+                ret = sin1->sin_addr.s_addr - sin2->sin_addr.s_addr;
+                if (ret != 0)
+                        return ret;
+                return sin1->sin_port - sin2->sin_port;
+        }
+
+#ifdef  IPV6
+        case AF_INET6: {
+                struct sockaddr_in6 *sin61 = (struct sockaddr_in6 *)s1;
+                struct sockaddr_in6 *sin62 = (struct sockaddr_in6 *)s2;
+
+                ret = yf_memcmp(&sin61->sin6_addr, &sin62->sin6_addr, sizeof(sin61->sin6_addr));
+                if (ret != 0)
+                        return ret;
+                return sin61->sin6_port - sin62->sin6_port;
+        }
+#endif
+
+#ifdef  AF_LOCAL
+        case AF_LOCAL: {
+                struct sockaddr_un *unp1 = (struct sockaddr_un *)s1;
+                struct sockaddr_un *unp2 = (struct sockaddr_un *)s2;
+                return yf_strcmp((unp1)->sun_path, (unp2)->sun_path);
+        }
+#endif
+
+        default:
+                return 0;
+        }                
+}
+
+
+int  __yf_tcp_cork(yf_socket_t s, int tcp_cork)
 {
 #ifdef  YF_LINUX
         return yf_setsockopt(s, IPPROTO_TCP, TCP_CORK,
-                          (const void *)&tcp_nocork, sizeof(int));
-#else
+                          (const void *)&tcp_cork, sizeof(int));
+#elif defined YF_FREEBSD
         return yf_setsockopt(s, IPPROTO_TCP, TCP_NOPUSH,
-                          (const void *)&tcp_nocork, sizeof(int));
+                          (const void *)&tcp_cork, sizeof(int));
+#else
+        return 0;
 #endif
+}
+
+int  yf_setsock_bufsize(yf_socket_t s, yf_int_t is_recv, int buf_size, yf_log_t* log)
+{
+        int  ebuf_size, elen;
+        if (setsockopt(s, SOL_SOCKET, SO_RCVBUF, &buf_size, sizeof(int)) != 0)
+                return -1;
+        
+        yf_getsockopt(s, SOL_SOCKET, SO_RCVBUF, &ebuf_size, &elen);
+        if (ebuf_size < buf_size)
+        {
+                yf_log_error(YF_LOG_WARN, log, 0, 
+                                "res effective buf size=%d < req buf size=%d", 
+                                ebuf_size, buf_size);
+        }
+        return  0;
 }
 
 

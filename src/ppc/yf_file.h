@@ -240,4 +240,8 @@ yf_int_t yf_create_path(struct yf_file_s *file, yf_path_t *path);
 yf_err_t yf_create_full_path(char *dir, yf_uint_t access);
 
 
+#define YF_SEEK_END SEEK_END
+#define YF_SEEK_CUR SEEK_CUR
+#define YF_SEEK_SET  SEEK_SET
+
 #endif /* _YF_FILE_H */

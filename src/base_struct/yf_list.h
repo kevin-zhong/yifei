@@ -31,6 +31,15 @@ static inline yf_slist_part_t* yf_slist_pop(yf_slist_part_t* part)
         return  poped;
 }
 
+static inline void yf_slist_delete(yf_slist_part_t* pre, yf_slist_part_t* target)
+{
+        if (target->next)
+        {
+                pre->next = target->next;
+                target->next = NULL;
+        }
+}
+
 #define yf_slist_empty(part) ((part)->next == NULL)
 
 #define yf_slist_for_each(pos, part) \

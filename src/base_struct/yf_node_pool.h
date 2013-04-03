@@ -14,13 +14,13 @@ struct yf_node_pool_s
 {
         //init attr
         char* nodes_array;
-        yf_u32_t  total_num;
+        yf_u32_t  total_num:24;//max (1<<24)-1
+        yf_u32_t  pool_index:8;
         yf_u32_t  each_taken_size;
 
         //inner data...
         yf_slist_part_t  free_list;
         yf_u32_t  free_size;
-        yf_u32_t  base_index;
         yf_id_seed_group_t  id_seed;
 };
 
@@ -42,7 +42,7 @@ typedef  yf_u64_t  yf_hnpool_t;
 
 //node_size is the org size, no need transfered by yf_node_taken_size(size)
 yf_hnpool_t* yf_hnpool_create(yf_u32_t node_size
-                , yf_u32_t num_per_chunk, yf_u16_t max_chunk
+                , yf_u32_t num_per_chunk, yf_u8_t max_chunk
                 , yf_log_t* log);
 
 void* yf_hnpool_alloc(yf_hnpool_t* hpool, yf_u64_t* id, yf_log_t* log);

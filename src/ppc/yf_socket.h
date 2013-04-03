@@ -131,6 +131,8 @@ yf_int_t yf_sock_set_addr(yf_sock_addr_t *sa, const char *addr);
 
 yf_sock_len_t  yf_sock_len(yf_sock_addr_t *sa);
 
+yf_u32_t  yf_sock_hash(const yf_sock_addr_t *sa);
+yf_int_t   yf_sock_cmp(const yf_sock_addr_t *s1, const yf_sock_addr_t *s2);
 
 
 typedef int  yf_socket_t;
@@ -145,13 +147,13 @@ typedef int  yf_socket_t;
 #define yf_blocking_n      "yf_fcntl(!O_NONBLOCK)"
 
 
-int  __yf_tcp_nocork(yf_socket_t s, int tcp_nocork);
+int  __yf_tcp_cork(yf_socket_t s, int tcp_cork);
 
-#define yf_tcp_nocork(s)  __yf_tcp_nocork(s, 1)
-#define yf_tcp_cork(s)  __yf_tcp_nocork(s, 0)
+#define yf_tcp_nocork(s)  __yf_tcp_cork(s, 0)
+#define yf_tcp_cork(s)  __yf_tcp_cork(s, 1)
 
-#define yf_tcp_nocork_n   "yf_setsockopt(TCP_CORK)"
-#define yf_tcp_cork_n     "yf_setsockopt(!TCP_CORK)"
+#define yf_tcp_nocork_n   "yf_setsockopt(!TCP_CORK)"
+#define yf_tcp_cork_n     "yf_setsockopt(TCP_CORK)"
 
 
 #define yf_shutdown_socket    yf_shutdown
@@ -159,6 +161,8 @@ int  __yf_tcp_nocork(yf_socket_t s, int tcp_nocork);
 
 #define yf_close_socket    yf_close
 #define yf_close_socket_n  "yf_close() socket"
+
+int  yf_setsock_bufsize(yf_socket_t s, yf_int_t is_recv, int buf_size, yf_log_t* log);
 
 #endif
 

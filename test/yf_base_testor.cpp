@@ -655,6 +655,211 @@ TEST_F(BaseTest, IdSeed)
         }
 }
 
+
+/*
+* circular buf
+*/
+TEST_F(BaseTest, CircularBuf)
+{
+        yf_circular_buf_t  cic_buf, cic_buf_pre;
+        yf_int_t  ret = yf_circular_buf_init(&cic_buf, 8192, _log);
+        ASSERT_EQ(ret, YF_OK);
+
+#define _TEST_MAX_BUF 8192*136
+        char  buf_cmp[_TEST_MAX_BUF];
+
+        yf_s32_t  head = 0, tail = 0, cursor = 0, cursor_seek, random_val;
+        yf_s32_t  ftellv, fsizev;
+        char* bres;
+        
+        yf_u16_t  vlength, cmplength, effective_len;
+        char vbuf[32768];
+
+#define _test_cmp_cs \
+                ftellv = yf_cb_ftell(&cic_buf); \
+                fsizev = yf_cb_fsize(&cic_buf); \
+                assert(ftellv == cursor - head); \
+                assert(fsizev == tail - head);
+
+#define _test_seek_cursor \
+                cursor_seek = (yf_s32_t)yf_mod(random(), 8192*64) - 8192*64; \
+                switch (yf_mod(random(), 3)) \
+                { \
+                        case 0: \
+                                cursor_seek = yf_min(tail-cursor, yf_max(cursor_seek, head-cursor)); \
+                                cursor += cursor_seek; \
+                                ret = yf_cb_fseek(&cic_buf, cursor_seek, YF_SEEK_CUR); \
+                                break; \
+                        case 1: \
+                                cursor_seek = yf_min(tail-head, yf_max(cursor_seek, 0)); \
+                                cursor = head + cursor_seek; \
+                                ret = yf_cb_fseek(&cic_buf, cursor_seek, YF_SEEK_SET); \
+                                break; \
+                        case 2: \
+                                cursor_seek = yf_max(head-tail, yf_min(0, cursor_seek)); \
+                                cursor = tail + cursor_seek; \
+                                ret = yf_cb_fseek(&cic_buf, cursor_seek, YF_SEEK_END); \
+                                break; \
+                } \
+                assert(ret == YF_OK); \
+                _test_cmp_cs;
+
+#define _test_head_set \
+                if (tail - head > 8192*80 || yf_mod(random(), 16) == 0) \
+                { \
+                        random_val = yf_mod(random(), 8192*16); \
+                        yf_s32_t _head_offset = yf_mod(random(), 2) ? 0 : yf_min(random_val, tail - head); \
+                        ret == yf_cb_fhead_set(&cic_buf, _head_offset); \
+                        ASSERT_EQ(ret, YF_OK); \
+                        if (_head_offset == 0) \
+                                head = cursor; \
+                        else { \
+                                head += _head_offset; \
+                                cursor = yf_max(head, cursor);\
+                        } \
+                        printf("head seted, now bsize=%d, offset=%d\n", tail - head, _head_offset); \
+                        _test_cmp_cs; \
+                }
+
+#define _test_cb_infod "cb info={hi=%d,ho=%d; ci=%d,co=%d; ti=%d,to=%d}"
+#define _test_cb_info cic_buf.head_index, cic_buf.head_offset, \
+                                                cic_buf.cursor_index, cic_buf.cursor_offset, \
+                                                cic_buf.tail_index, cic_buf.tail_offset \
+
+        int choice, ichoice, i1;
+        char cfill;
+        for (int i = 0; i < 1024*1024; ++i)
+        {
+                choice = yf_mod(random(), 4);
+                switch (choice)
+                {
+                        case 0:
+                        case 1:
+                                //write
+                                if (choice == 0)
+                                {
+                                        _test_seek_cursor;
+                                }
+                                else {
+                                        cursor = tail;
+                                        yf_cb_fseek(&cic_buf, 0, YF_SEEK_END);
+                                        _test_cmp_cs;
+                                }
+
+                                //if == 0, some wrong...
+                                vlength = yf_mod(random(), 32768) + 1;
+                                cfill = (char)random();
+                                yf_memset(buf_cmp+cursor, cfill, vlength);
+
+                                printf("before: write len=%d, now head=%d, cursor=%d, tail=%d, "
+                                        _test_cb_infod"\n", vlength, head, cursor, tail, _test_cb_info);
+
+                                if (yf_mod(random(), 2))
+                                {
+                                        cmplength = yf_cb_fwrite(&cic_buf, buf_cmp+cursor, vlength);
+                                        ASSERT_EQ(cmplength, vlength);
+                                }
+                                else {
+                                        char** wbufs = NULL, **tmp_wbuf;
+                                        yf_s32_t woffset = 0;
+                                        yf_s32_t wlen = yf_align(vlength, cic_buf.buf_size) + yf_mod(random(), 4096);
+
+                                        //just for gdb core
+                                        yf_memcpy(&cic_buf_pre, &cic_buf, offsetof(yf_circular_buf_t, buf));
+                                        
+                                        wlen = yf_cb_space_write_alloc(&cic_buf, wlen, &wbufs, &woffset);
+                                        tmp_wbuf = wbufs;
+                                        assert(wlen >= vlength);
+                                        printf("after space alloc, "_test_cb_infod"\n", _test_cb_info);
+
+                                        yf_s32_t  rest_len = vlength;
+                                        yf_s32_t  writed = yf_min(rest_len, cic_buf.buf_size-woffset);
+                                        yf_memset(wbufs[0]+woffset, cfill, writed);
+                                        rest_len -= writed;
+                                        ++wbufs;
+                                        for (; rest_len > 0; rest_len-=cic_buf.buf_size, ++wbufs)
+                                        {
+                                                yf_memset(*wbufs, cfill, yf_min(rest_len, cic_buf.buf_size));
+                                        }
+
+                                        yf_cb_space_write_bytes(&cic_buf, vlength);
+                                }
+                                
+                                cursor += vlength;
+                                if (cursor > tail)
+                                {
+                                        tail = cursor;
+                                        if (tail + 32768 >= _TEST_MAX_BUF)
+                                        {
+                                                printf("reach cmp buf's end, restart again\n");
+                                                yf_memmove(buf_cmp, buf_cmp+head, tail-head);
+                                                tail -= head;
+                                                cursor -= head;
+                                                head = 0;
+                                        }
+                                }
+
+                                printf("after: write len=%d, now head=%d, cursor=%d, tail=%d, "
+                                        _test_cb_infod"\n", vlength, head, cursor, tail, _test_cb_info);                                
+
+                                _test_cmp_cs;
+                                yf_circular_buf_shrink(&cic_buf, _log);
+                                _test_head_set;
+                                break;
+                        case 2:
+                                //read
+                                _test_seek_cursor;
+                                for (i1=0; i1 < 4; ++i1)
+                                {
+                                        ichoice = yf_mod(random(), 2);
+                                        vlength = yf_mod(random(), 16384);
+                                        effective_len = yf_min(vlength, tail-cursor);
+
+                                        printf("read len=%d, effective_len=%d, peek=%d, "
+                                                "now head=%d, cursor=%d, tail=%d\n", 
+                                                        vlength, effective_len, ichoice, 
+                                                        head, cursor, tail);
+                                        
+                                        cmplength = yf_cb_fread(&cic_buf, effective_len, ichoice, &bres);
+                                        ASSERT_EQ(cmplength, effective_len);
+                                        ret = yf_memcmp(bres, buf_cmp+cursor, effective_len);
+                                        assert(ret == 0);
+                                        ASSERT_EQ(ret, 0);
+
+                                        if (!ichoice)
+                                                cursor += effective_len;
+                                        _test_cmp_cs;
+                                }
+
+                                yf_circular_buf_shrink(&cic_buf, _log);
+
+                                _test_head_set;
+                                break;
+                        case 3:
+                                //truncate
+                                random_val = yf_mod(random(), 8192*128);
+                                vlength = yf_min(random_val, tail-head);
+
+                                printf("truncate to len=%d\n", vlength);
+                                
+                                tail = head + vlength;
+                                if (cursor > tail)
+                                        cursor = tail;
+
+                                yf_cb_ftruncate(&cic_buf, vlength);
+                                _test_cmp_cs;
+                                break;
+                        case 4:
+                                break;
+                        case 5:
+                        case 6:
+                        case 7:
+                                break;
+                }
+        }
+}
+
+
 #ifdef TEST_F_INIT
 TEST_F_INIT(BaseTest, BaseAlgo);
 TEST_F_INIT(BaseTest, BitOp);
@@ -667,6 +872,7 @@ TEST_F_INIT(BaseTest, NodePool);
 TEST_F_INIT(BaseTest, HNodePool);
 TEST_F_INIT(BaseTest, SlabPool);
 TEST_F_INIT(BaseTest, IdSeed);
+TEST_F_INIT(BaseTest, CircularBuf);
 #endif
 
 int main(int argc, char **argv)

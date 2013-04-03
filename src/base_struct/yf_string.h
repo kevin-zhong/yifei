@@ -124,4 +124,8 @@ char *yf_vslprintf(char *buf, char *last, const char *fmt, va_list args);
 char *yf_sprintf_num(char *buf, char *last, yf_u64_t ui64
                 , char zero, yf_uint_t hexadecimal, yf_uint_t width);
 
+#define yf_strncpy2(buf, last, data, len, rlen) \
+                rlen = yf_min(last - buf, len); \
+                buf = yf_cpymem(buf, data, rlen);
+
 #endif

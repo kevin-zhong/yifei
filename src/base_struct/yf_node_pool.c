@@ -105,22 +105,22 @@ yf_u64_t  yf_get_id_by_node(yf_node_pool_t* node_pool, void* node, yf_log_t* log
         yf_u64_t offset = ((char*)node_head - node_pool->nodes_array)
                         / node_pool->each_taken_size;
 
-        return  ((offset+node_pool->base_index) << 32) | node_head->id_pre;
+        return  ((offset | (node_pool->pool_index<<24)) << 32) | node_head->id_pre;
 }
 
 void* yf_get_node_by_id(yf_node_pool_t* node_pool, yf_u64_t id, yf_log_t* log)
 {
         _np_node_head_t* node_head = (_np_node_head_t*)(node_pool->nodes_array 
-                        + ((id>>32) - node_pool->base_index) * node_pool->each_taken_size);
+                        + ((id>>32) & ((1<<24)-1)) * node_pool->each_taken_size);
 
         if (!node_head->used)
                 return NULL;
         assert(yf_check_magic(node_head->magic));
 
-        if (node_head->id_pre != ((id<<32)>>32))
+        if (node_head->id_pre != yf_u32tou64_getl(id))
         {
                 yf_log_debug2(YF_LOG_DEBUG, log, 0, "id pre not equall, id=%d, buf=%d", 
-                                ((id<<32)>>32), node_head->id_pre);
+                                yf_u32tou64_getl(id), node_head->id_pre);
                 return NULL;
         }
 
@@ -150,9 +150,10 @@ static int __cmp_pool_freesize(const void *p1, const void *p2)
 typedef struct yf_hnpool_in_s
 {
         yf_u32_t  num_per_chunk;
-        yf_u16_t  max_chunk;
-        yf_u16_t  used_chunk;
-        yf_u16_t  alloc_chunk;
+        yf_u8_t    max_chunk;
+        yf_u8_t    used_chunk;
+        yf_u8_t    alloc_chunk;
+        yf_u8_t    padding;
         yf_u32_t  node_taken_size;
         
         yf_node_pool_t*  node_pools;
@@ -169,7 +170,7 @@ static void _yf_hnpool_init_child_pool(yf_hnpool_in_t* hnpool
         node_pool->nodes_array = mem;
         node_pool->total_num = hnpool->num_per_chunk;
         node_pool->each_taken_size = hnpool->node_taken_size;
-        node_pool->base_index = hnpool->num_per_chunk * hnpool->used_chunk;
+        node_pool->pool_index = hnpool->used_chunk;
 
         hnpool->node_pool_infos[hnpool->used_chunk].pool = node_pool;
 
@@ -180,7 +181,7 @@ static void _yf_hnpool_init_child_pool(yf_hnpool_in_t* hnpool
 
 
 yf_hnpool_t* yf_hnpool_create(yf_u32_t node_size
-                , yf_u32_t num_per_chunk, yf_u16_t max_chunk
+                , yf_u32_t num_per_chunk, yf_u8_t max_chunk
                 , yf_log_t* log)
 {
         CHECK_RV(num_per_chunk == 0, NULL);
@@ -289,14 +290,14 @@ void  yf_hnpool_free(yf_hnpool_t* hpool, yf_u64_t id, void* node, yf_log_t* log)
                         return;
         }
         
-        yf_u32_t chunk = (id >> 32) / hp->num_per_chunk;
+        yf_u32_t chunk = (id >> 56);
         yf_free_node_to_pool(hp->node_pools + chunk, node, log);
 }
 
 void* yf_hnpool_id2node(yf_hnpool_t* hpool, yf_u64_t id, yf_log_t* log)
 {
         yf_hnpool_in_t* hp = (yf_hnpool_in_t*)hpool;
-        yf_u32_t chunk = (id >> 32) / hp->num_per_chunk;
+        yf_u32_t chunk = (id >> 56);
 
         return yf_get_node_by_id(hp->node_pools + chunk, id, log);
 }

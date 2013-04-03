@@ -263,7 +263,7 @@ yf_palloc_large(yf_pool_t *pool, size_t size)
                 }
         }
 
-        large = yf_alloc(sizeof(yf_pool_large_t));
+        large = yf_palloc(pool, sizeof(yf_pool_large_t));
         if (large == NULL)
         {
                 yf_free(p);

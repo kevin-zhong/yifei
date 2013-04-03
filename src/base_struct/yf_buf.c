@@ -1,6 +1,22 @@
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 
+
+yf_buf_t *yf_alloc_buf_mem(yf_pool_t *pool, yf_buf_t * buf, size_t size)
+{
+        buf->start = yf_palloc(pool, size);
+        if (buf->start == NULL)
+        {
+                return NULL;
+        }
+
+        buf->pos = buf->start;
+        buf->last = buf->start;
+        buf->end = buf->last + size;
+        buf->temporary = 1;
+        return  buf;
+}
+
 yf_buf_t *
 yf_create_temp_buf(yf_pool_t *pool, size_t size)
 {
@@ -82,6 +98,7 @@ yf_create_chain_of_bufs(yf_pool_t *pool, yf_bufs_t *bufs)
                 p += bufs->size;
                 b->end = p;
 
+                //will drop org buf mem if have...
                 cl = yf_alloc_chain_link(pool);
                 if (cl == NULL)
                 {

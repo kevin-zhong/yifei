@@ -9,6 +9,7 @@
 #define YF_EVT_DATA union { \
                 yf_u64_t  data2; \
                 yf_u32_t  data3[2]; \
+                void* data4; \
         }
 
 typedef  struct  yf_tm_evt_s

@@ -26,6 +26,8 @@ libyifei_la_SOURCES=./mio_driver/yf_event.c \
 ./base_struct/yf_node_pool.c \
 ./base_struct/yf_slab_pool.c \
 ./base_struct/yf_id_seed.c \
+./base_struct/yf_tpl_hash.c \
+./base_struct/yf_circular_buf.c \
 ./ppc/yf_sys_call.c \
 ./ppc/yf_time.c \
 ./ppc/yf_cpuinfo.c \

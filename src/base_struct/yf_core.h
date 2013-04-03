@@ -45,6 +45,8 @@ typedef struct yf_slab_pool_s  yf_slab_pool_t;
 #include "yf_rbtree.h"
 #include "yf_bit_op.h"
 #include "yf_log.h"
+#include "yf_tpl_hash.h"
+#include "yf_circular_buf.h"
 
 
 #define yf_min(a, b)   (((a) < (b)) ? (a) : (b))
