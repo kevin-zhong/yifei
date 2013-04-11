@@ -407,6 +407,8 @@ yf_s32_t yf_cb_fread(yf_circular_buf_t* cb, yf_s32_t bytes, yf_int_t flags, char
         yf_s32_t  roffset = cb->cursor_offset;
         yf_s16_t  rindex = cb->cursor_index, tindex = cb->tail_index;
 
+        yf_s32_t  rest_rsize = yf_circular_buf_rest_rsize(cb);
+        bytes = yf_min(rest_rsize, bytes);
         CHECK_RV(bytes <= 0, bytes);
 
         _yf_cb_preprocess_cursor(rindex, roffset, cb);
@@ -425,8 +427,6 @@ yf_s32_t yf_cb_fread(yf_circular_buf_t* cb, yf_s32_t bytes, yf_int_t flags, char
         }
 
         char* b = NULL;
-        yf_s32_t  rest_rsize = yf_circular_buf_rest_rsize(cb);
-        bytes = yf_min(rest_rsize, bytes);
 
         b = yf_palloc(cb->mpool, bytes);
         assert(b);

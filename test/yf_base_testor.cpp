@@ -857,6 +857,8 @@ TEST_F(BaseTest, CircularBuf)
                                 break;
                 }
         }
+
+        yf_circular_buf_destory(&cic_buf);
 }
 
 
