@@ -210,6 +210,7 @@ static void  yf_timeout_caller(yf_tm_evt_driver_in_t* tm_evt_driver)
 {
         yf_slist_part_t* pos;
         yf_timer_t* ptimer;
+        yf_u32_t  active_index;
 
         //TODO, still have exception, if callback cancel a timeout timer...
         while (!yf_slist_empty(&tm_evt_driver->timeout_list))
@@ -228,9 +229,20 @@ static void  yf_timeout_caller(yf_tm_evt_driver_in_t* tm_evt_driver)
                                         fd_evt->evt.fd, &yf_evt_tn(&fd_evt->evt), 
                                         tm_evt_driver->fdtm_evts_num
                                         );
+                        assert(fd_evt->active);
 
+                        active_index = fd_evt->last_active_op_index;
+                        fd_evt->timeset = 0;
+                        
                         fd_evt->evt.timeout = 1;
                         fd_evt->evt.fd_evt_handler(&fd_evt->evt);
+
+                        //for oneshot event, so unregister evt after event handled
+                        if (fd_evt ->evt.fd > 0 
+                                && fd_evt->active && active_index == fd_evt->last_active_op_index)
+                        {
+                                yf_unregister_fd_evt(&fd_evt->evt);
+                        }
                 }
                 else {
                         yf_tm_evt_link_t* tm_evt = container_of(ptimer, yf_tm_evt_link_t, timer);

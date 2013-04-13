@@ -28,6 +28,7 @@ static inline yf_slist_part_t* yf_slist_pop(yf_slist_part_t* part)
                 return NULL;
         yf_slist_part_t* poped = (part)->next;
         (part)->next = poped->next;
+        poped->next = NULL;
         return  poped;
 }
 
