@@ -22,6 +22,8 @@
 #define YF_TASK_TIMEOUT 1
 #define YF_TASK_ERROR 2
 
+extern const yf_str_t yf_task_rstatus_n[];
+
 #define YF_BRIDGE_MAX_CHILD_NUM 32
 
 typedef  yf_u64_t yf_bridge_t;
@@ -66,6 +68,10 @@ typedef struct yf_bridge_cxt_s
         size_t queue_capacity;
         
         yf_log_t* log;
+
+        //can be used for biz...
+        void* data;
+        void* data2;
 }
 yf_bridge_cxt_t;
 
@@ -79,6 +85,8 @@ yf_uint_t  yf_bridge_task_num(yf_bridge_t* bridge);
 //if dispatch_func == NULL, then the idle child will deal the task, else
 //the dispated target child will deal the task
 yf_bridge_t* yf_bridge_create(yf_bridge_cxt_t* bridge_ctx, yf_log_t* log);
+
+yf_bridge_cxt_t* yf_bridge_ctx(yf_bridge_t* bridge);
 
 //will destory childs and destory bridge...
 //if in proc child mod, child proc will recv a SIGTERM signal...

@@ -91,6 +91,7 @@ void yf_evt_driver_start(yf_evt_driver_t* driver);
 
 yf_int_t  yf_alloc_fd_evt(yf_evt_driver_t* driver, yf_fd_t fd
                 , yf_fd_event_t** read, yf_fd_event_t** write, yf_log_t* log);
+//pwrite can be set=NULL
 yf_int_t  yf_free_fd_evt(yf_fd_event_t* pread
                 , yf_fd_event_t* pwrite);
 

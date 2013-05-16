@@ -289,7 +289,7 @@ static yf_int_t yf_select_dispatch(yf_fd_poll_t *poller)
                 if (found)
                 {
                         link_evt->evt.ready = 1;
-                        yf_list_add_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
+                        yf_list_move_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
                         nready++;
                 }
         }

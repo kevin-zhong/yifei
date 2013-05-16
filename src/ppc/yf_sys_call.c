@@ -44,6 +44,10 @@ int (*yf_select)(int nfds, fd_set *readfds, fd_set *writefds,
                 fd_set *exceptfds, struct timeval *timeout) = select;
 #endif
 
+#ifdef  HAVE_POLL_H
+int (*yf_poll)(struct pollfd *fds, nfds_t nfds, int timeout) = poll;
+#endif
+
 #ifdef HAVE_GETHOSTBYNAME2
 struct hostent* (*yf_gethostbyname2)(const char *name, int af) = gethostbyname2;
 #endif

@@ -94,8 +94,14 @@ extern int (*yf_getaddrinfo)(const char *node, const char *service,
                struct addrinfo **res);
 
 #ifdef  HAVE_SYS_SELECT_H
+#include <sys/select.h>
 extern int (*yf_select)(int nfds, fd_set *readfds, fd_set *writefds,
                 fd_set *exceptfds, struct timeval *timeout);
+#endif
+
+#ifdef  HAVE_POLL_H
+#include <poll.h>
+extern int (*yf_poll)(struct pollfd *fds, nfds_t nfds, int timeout);
 #endif
 
 #ifdef HAVE_GETHOSTBYNAME2

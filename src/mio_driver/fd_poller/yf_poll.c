@@ -219,7 +219,7 @@ static yf_int_t yf_poll_dispatch(yf_fd_poll_t *poller)
         yf_log_debug1(YF_LOG_DEBUG, poller->log, 0, "poll timer: %ud",
                       evt_driver->tm_driver.nearest_timeout_ms);
 
-        ready = poll(poll_ctx->event_list, poll_ctx->nevents,
+        ready = yf_poll(poll_ctx->event_list, poll_ctx->nevents,
                      (int)evt_driver->tm_driver.nearest_timeout_ms);
 
         err = (ready == -1) ? yf_errno : 0;
@@ -321,14 +321,14 @@ static yf_int_t yf_poll_dispatch(yf_fd_poll_t *poller)
                         found = 1;
                         link_evt = &fd_evt->read;
                         link_evt->evt.ready = 1;
-                        yf_list_add_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
+                        yf_list_move_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
                 }
                 if (revents & POLLOUT)
                 {
                         found = 1;
                         link_evt = &fd_evt->write;
                         link_evt->evt.ready = 1;
-                        yf_list_add_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
+                        yf_list_move_tail(&link_evt->ready_linker, &poller->ctx->ready_list);
                 }
 
                 if (found)

@@ -146,7 +146,7 @@ yf_int_t  yf_free_fd_evt(yf_fd_event_t* pread, yf_fd_event_t* pwrite)
         yf_fd_evt_in_t* alloc_evt = container_of(pread, yf_fd_evt_in_t, read.evt);
 
         yf_fd_event_t* write_check = &alloc_evt->write.evt;
-        CHECK_RV(write_check != pwrite, YF_ERROR);
+        CHECK_RV(pwrite && write_check != pwrite, YF_ERROR);
 
         yf_log_t* log = pread->log;
 
@@ -160,7 +160,7 @@ yf_int_t  yf_free_fd_evt(yf_fd_event_t* pread, yf_fd_event_t* pwrite)
         alloc_evt->use_flag = 0;
 
         yf_unregister_fd_evt(pread);
-        yf_unregister_fd_evt(pwrite);
+        yf_unregister_fd_evt(write_check);
 
         if (unlikely(fd_evt_driver->evt_poll->poll_cls->actions.del
                 && fd_evt_driver->evt_poll->poll_cls->actions.del(
@@ -173,7 +173,7 @@ yf_int_t  yf_free_fd_evt(yf_fd_event_t* pread, yf_fd_event_t* pwrite)
         yf_log_debug1(YF_LOG_DEBUG, log, 0, "free fd evt, fd=%d", pread->fd);
 
         pread->fd = YF_INVALID_FD;
-        pwrite->fd = YF_INVALID_FD;
+        write_check->fd = YF_INVALID_FD;
         
         fd_evt_driver->evts_num--;
         return YF_OK;
@@ -187,7 +187,8 @@ yf_int_t  yf_register_fd_evt(yf_fd_event_t* pevent, yf_time_t  *time_out)
 
         pevent->timeout = 0;
 
-        //if ready, no need to poll
+        //if ready, no need to poll, this ready flag not right all.
+        //for exp: if the socket have 2047, you just read 2047, maybe no bytes in buf, so not ready
         if (pevent->ready)
         {
                 yf_log_debug2(YF_LOG_DEBUG, pevent->log, 0, "fd=%d, evt=[%V] "

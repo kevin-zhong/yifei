@@ -2,6 +2,9 @@
 #include <base_struct/yf_core.h>
 #include "yf_bridge_in.h"
 
+const yf_str_t yf_task_rstatus_n[] = {yf_str("success"), 
+                yf_str("timeout"), yf_str("error")};
+
 typedef  yf_int_t  (*yf_bridge_creator_ptr)(yf_bridge_in_t* bridge_in, yf_log_t* log);
 
 #define yf_bridge_creator_index(cx) (cx)->child_ins_type \
@@ -115,6 +118,15 @@ yf_int_t  yf_bridge_destory(yf_bridge_t* bridge, yf_log_t* log)
                 yf_free(bridge_in);
         return YF_OK;
 }
+
+
+yf_bridge_cxt_t* yf_bridge_ctx(yf_bridge_t* bridge)
+{
+        yf_bridge_in_t* bridge_in = (yf_bridge_in_t*)bridge;
+        assert(yf_check_be_magic(bridge_in));
+        return  &bridge_in->ctx;
+}
+
 
 yf_int_t yf_attach_res_bridge(yf_bridge_t* bridge
                 , yf_evt_driver_t* evt_driver, yf_task_res_handle handler, yf_log_t* log)

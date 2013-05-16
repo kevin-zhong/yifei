@@ -202,6 +202,12 @@ void yf_evt_driver_start(yf_evt_driver_t* driver)
                         }
                 }
 
+                //TODO, if ready list have new evt...
+                if (!yf_list_empty(&evt_driver->fd_driver.ready_list))
+                {
+                        yf_log_debug0(YF_LOG_DEBUG, iner_evt->evt.log, 0, "still have readylist");
+                }
+
                 //poll sig event;
                 if (evt_driver->sig_driver_inited)
                         evt_driver->sig_driver->poll(evt_driver->sig_driver);
