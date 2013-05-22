@@ -52,5 +52,17 @@ int (*yf_poll)(struct pollfd *fds, nfds_t nfds, int timeout) = poll;
 struct hostent* (*yf_gethostbyname2)(const char *name, int af) = gethostbyname2;
 #endif
 
+#ifdef HAVE_GETHOSTBYNAME_R
+int (*yf_gethostbyname_r)(const char *name,
+       struct hostent *ret, char *buf, size_t buflen,
+       struct hostent **result, int *h_errnop) = gethostbyname_r;
+#endif
+
+#ifdef HAVE_GETHOSTBYNAME2_R
+int (*yf_gethostbyname2_r)(const char *name, int af,
+       struct hostent *ret, char *buf, size_t buflen,
+       struct hostent **result, int *h_errnop) = gethostbyname2_r;
+#endif
+
 #endif
 

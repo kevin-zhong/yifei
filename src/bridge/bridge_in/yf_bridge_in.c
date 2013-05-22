@@ -196,8 +196,15 @@ yf_u64_t yf_send_task(yf_bridge_t* bridge
         assert(child_no >= 0 && child_no < bridge_in->ctx.child_num);
         task_ctx->child_no = child_no;
 
+        if (timeout_ms == 0 && bridge_in->ctx.child_ins_type == YF_BRIDGE_INS_PROC)
+        {
+                yf_log_debug(YF_LOG_DEBUG, log, 0, 
+                                "need send task to child proc with never tiemout");
+                timeout_ms = 7200 * 1000;//two hour
+        }
+
         //set tm evt if can
-        if (bridge_in->parent_evt_driver)
+        if (timeout_ms && bridge_in->parent_evt_driver)
         {
                 ret = yf_alloc_tm_evt(bridge_in->parent_evt_driver, &task_ctx->tm_evt, log);
                 if (unlikely(ret != YF_OK))
@@ -366,6 +373,9 @@ void yf_poll_task(yf_bridge_t* bridge, yf_log_t* log)
                 return;
 
         yf_int_t child_no = bridge_in->child_no(bridge_in, log);
+
+        //add on 2013/05/21, if threads called later, and task arrive first, then ...
+        yf_bridge_on_task_valiable(bridge_in, child_no, log);
         
         bridge_in->wait_task(bridge_in, child_no, log);
         yf_bridge_on_task_valiable(bridge_in, child_no, log);

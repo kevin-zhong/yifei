@@ -14,11 +14,12 @@ ssize_t yf_sock_ntop(const yf_sock_addr_t *sa, char *text, size_t len, yf_int_t 
                 if (port)
                 {
                         p = yf_snprintf(text, len, "%ud.%ud.%ud.%ud:%d",
-                                        p[0], p[1], p[2], p[3], ntohs(sin->sin_port));
+                                        (yf_u8_t)p[0], (yf_u8_t)p[1], (yf_u8_t)p[2], (yf_u8_t)p[3], 
+                                        ntohs(sin->sin_port));
                 }
                 else {
                         p = yf_snprintf(text, len, "%ud.%ud.%ud.%ud",
-                                        p[0], p[1], p[2], p[3]);
+                                        (yf_u8_t)p[0], (yf_u8_t)p[1], (yf_u8_t)p[2], (yf_u8_t)p[3]);
                 }
 
                 return (ssize_t)(p - text);

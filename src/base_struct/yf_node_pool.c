@@ -68,8 +68,9 @@ void* yf_alloc_node_from_pool(yf_node_pool_t* node_pool, yf_log_t* log)
         
         node_pool->free_size -= 1;
 
-        yf_log_debug3(YF_LOG_DEBUG, log, 0, "total_num=%d, after alloc %d, free=%d", 
-                        node_pool->total_num, node_head->id_pre, node_pool->free_size);
+        yf_log_debug4(YF_LOG_DEBUG, log, 0, 
+                        "total_num=%d, after alloc %d, free=%d, alloc_ptr=%p", 
+                        node_pool->total_num, node_head->id_pre, node_pool->free_size, part);
         
         return  part;
 }
@@ -92,8 +93,9 @@ void yf_free_node_to_pool(yf_node_pool_t* node_pool, void* node, yf_log_t* log)
 
         yf_memzero(node_head, _NP_NODE_HEAD_SIZE);
         
-        yf_log_debug3(YF_LOG_DEBUG, log, 0, "total_num=%d, after free %d, free=%d", 
-                        node_pool->total_num, id_pre, node_pool->free_size);        
+        yf_log_debug4(YF_LOG_DEBUG, log, 0, 
+                        "total_num=%d, after free %d, free=%d, free_ptr=%p", 
+                        node_pool->total_num, id_pre, node_pool->free_size, part);
 }
 
 

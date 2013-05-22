@@ -44,8 +44,11 @@
 #define YF_EAGAIN(err) (err==EWOULDBLOCK)
 #endif
 
+#define YF_EAGAINNO EWOULDBLOCK
+
 #else
 #define YF_EAGAIN(err) (err==EAGAIN)
+#define YF_EAGAINNO  EAGAIN
 #endif
 
 #define yf_errno                  errno
