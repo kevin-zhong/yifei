@@ -1,6 +1,7 @@
 #!/bin/bash
 i=0
-cnt=10000
+cnt=1
+#cnt=10000
 while [ $i -lt $cnt ]; 
 do
         rm -rf dir/*

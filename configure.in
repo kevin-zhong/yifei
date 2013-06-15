@@ -7,6 +7,9 @@ AM_INIT_AUTOMAKE(Yifei, 0.1)
 AC_CONFIG_SRCDIR([src/mio_driver/yf_send_recv.c])
 AC_CONFIG_HEADER([src/yf_config.h])
 
+CC=gcc
+CXX=g++
+
 # Check system type
 system_type=`uname -s 2>/dev/null`
 case $system_type in
@@ -17,6 +20,9 @@ case $system_type in
                 AC_DEFINE([YF_LINUX], [], ["Linux"])
         ;;
         Darwin)
+                AC_MSG_WARN("darwin...")
+                CC=clang
+                CXX=clang++
                 AC_DEFINE([YF_DARWIN], [], ["Darwin"])
         ;;
         SunOS)
@@ -36,12 +42,13 @@ AC_PROG_CXX
 
 # Checks for libraries.
 AC_PROG_RANLIB
-# for so...
+# for so, mac error if open...
 AC_PROG_LIBTOOL
 AC_CONFIG_MACRO_DIR([m4])
 
 # for clock_gettime
-LDFLAGS=-lrt
+# mac dont have clock_gettime, so dont define this, else all will fail...2013/05/25 22:43
+# LDFLAGS=-lrt
 
 # Checks for header files.
 AC_HEADER_DIRENT

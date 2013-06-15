@@ -1,9 +1,9 @@
-#include <poll.h>
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 #include "../event_in/yf_event_base_in.h"
 
 #ifdef  HAVE_POLL_H
+#include <poll.h>
 
 typedef  struct
 {
@@ -147,7 +147,7 @@ static yf_int_t yf_poll_deactivate(yf_fd_poll_t *poller, yf_fd_evt_link_t *ev)
                 return YF_OK;
         }
 
-        if (event == YF_REVT)
+        if (fd_evt->type == YF_REVT)
         {
                 eo_part = &container_of(ev, yf_fd_evt_in_t, read)->write;
                 event = POLLIN;

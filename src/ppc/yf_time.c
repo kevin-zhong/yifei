@@ -157,7 +157,7 @@ yf_int_t  yf_init_time(yf_log_t* log)
         yf_start_times.clock_utime = yf_start_times.wall_utime;
         yf_utime_to_time(yf_start_times.clock_time, yf_start_times.clock_utime);
 
-        yf_update_log_time();
+        yf_update_log_time(log);
         return  YF_OK;
 }
 
@@ -179,7 +179,7 @@ yf_int_t  yf_update_time(yf_time_reset_handler handle, void* data, yf_log_t* log
                 *wall_utime = *clock_utime = now_time;
                 yf_utime_to_time(*clock_time, *clock_utime);
 
-                yf_update_log_time();
+                yf_update_log_time(log);
                 return  YF_OK;
         }
 
@@ -197,7 +197,7 @@ yf_int_t  yf_update_time(yf_time_reset_handler handle, void* data, yf_log_t* log
         yf_start_times.wall_utime = yf_start_times.clock_utime = now_time;
         yf_start_times.clock_time = *clock_time;
 
-        yf_update_log_time();
+        yf_update_log_time(log);
         return  YF_OK;
 }
 

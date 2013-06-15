@@ -1,9 +1,9 @@
-#include <sys/select.h>
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 #include "../event_in/yf_event_base_in.h"
 
 #ifdef  HAVE_SYS_SELECT_H
+#include <sys/select.h>
 
 typedef  struct
 {

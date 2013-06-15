@@ -101,8 +101,8 @@ char* yf_log_pre_default(yf_log_t* yf_log, char* buf, char* last
                         &err_levels[level]);
 
         /* pid#tid */
-        p = yf_snprintf(p, last - p, "[%P#" YF_TID_T_FMT "]: ",
-                        yf_log_pid, yf_log_tid);
+        //p = yf_snprintf(p, last - p, "[%P#" YF_TID_T_FMT "]: ",
+        //                yf_log_pid, yf_log_tid);
         return p;
 }
 

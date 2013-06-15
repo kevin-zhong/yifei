@@ -85,11 +85,15 @@ static inline void yf_add_near_timer(yf_tm_evt_driver_in_t* tm_evt_driver
         LIST_ADD_TIMER(timer, &tm_evt_driver->near_tm_lists[index]);
 
         tm_evt_driver->near_evts_num++;
+        if (ms < tm_evt_driver->nearest_timeout_ms)
+        {
+                tm_evt_driver->nearest_timeout_ms = ms;
+        }
 
-        yf_log_debug5(YF_LOG_DEBUG, log, 0, "near timer roll index=%d, "
-                        "add timer index=%d, tm ms=%d, near evts num=%d, timer addr=%p", 
+        yf_log_debug6(YF_LOG_DEBUG, log, 0, "near timer roll index=%d, "
+                        "add timer index=%d, tm ms=%d, near evts num=%d, nearest_timeout_ms=%d, timer addr=%p", 
                         tm_evt_driver->near_tm_roll_index, index, ms,  
-                        tm_evt_driver->near_evts_num, 
+                        tm_evt_driver->near_evts_num, tm_evt_driver->nearest_timeout_ms,
                         timer);
 }
 
@@ -634,7 +638,6 @@ update_near_flags:
                         tm_evt_driver->too_far_tm_period_cnt);
 
         yf_u64_t  passed_ms, timeout_ms, rest_ms;
-        yf_u32_t  index = 0;
         yf_int_t   big_lacy = 0;
 
         yf_list_for_each_safe(pos, keep, &tm_evt_driver->too_far_tm_list)

@@ -14,7 +14,7 @@ static void inline yf_strtolower(char *src, size_t n)
         while (n)
         {
                 *src = yf_tolower(*src);
-                *src++;
+                src++;
                 n--;
         }
 }
@@ -23,7 +23,7 @@ static void inline yf_strtoupper(char *src, size_t n)
         while (n)
         {
                 *src = yf_toupper(*src);
-                *src++;
+                src++;
                 n--;
         }
 }

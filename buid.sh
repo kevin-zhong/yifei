@@ -1,7 +1,8 @@
 autoheader
 aclocal
 autoconf
-libtoolize -f -c
+#in mac, must use g+libtoolize
+glibtoolize -f -c
 automake -a
 mkdir -p m4
 rm aclocal.m4

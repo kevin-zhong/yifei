@@ -1,6 +1,7 @@
 lib_LTLIBRARIES=libyifei.la
 
-libyifei_la_SOURCES=./mio_driver/yf_event.c \
+libyifei_la_SOURCES=./ppc/yf_process.c \
+./mio_driver/yf_event.c \
 ./mio_driver/fd_poller/yf_epoll.c \
 ./mio_driver/fd_poller/yf_select.c \
 ./mio_driver/fd_poller/yf_poll.c \
@@ -31,7 +32,6 @@ libyifei_la_SOURCES=./mio_driver/yf_event.c \
 ./ppc/yf_sys_call.c \
 ./ppc/yf_time.c \
 ./ppc/yf_cpuinfo.c \
-./ppc/yf_process.c \
 ./ppc/yf_socket.c \
 ./ppc/yf_channel.c \
 ./ppc/yf_setproctitle.c \
