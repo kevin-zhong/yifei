@@ -305,8 +305,9 @@ yf_int_t  yf_fd_evt_timer_ctl(yf_fd_event_t* pevent
         {
                 case FD_TIMER_NEW:
                 {
-                        yf_set_timer_val(iner_evt, *time_out, 1);
-                        yf_add_timer(tm_evt_driver, &iner_evt->timer, pevent->log);
+                        yf_set_timer_val(iner_evt, time_out, 1);
+                        yf_add_timer(tm_evt_driver, &iner_evt->timer, pevent->log, 
+                                iner_evt->timer.time_out_ms);
                         iner_evt->timeset = 1;
                         break;
                 }

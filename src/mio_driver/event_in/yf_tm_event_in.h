@@ -11,10 +11,10 @@ struct  yf_timer_s
         };
         yf_list_part_t  *head;
 
-        //timeout val
-        yf_time_t  time_out;
         yf_time_t  time_start;
-        yf_time_t  time_org_start;
+
+        yf_u32_t   time_out_ms:30;
+        yf_u32_t   is_fd_evt:1;
 };
 
 
@@ -27,19 +27,32 @@ struct  yf_tm_evt_link_s
 
 #define  yf_link_2_timer(pos) container_of(pos, yf_timer_t, linker)
 
-#define  yf_set_timer_val(event, out_val, is_fd_evt) do { \
-        event->timer.time_out = out_val; \
+#define  yf_set_timer_val(event, _out_val, _is_fd_evt) do { \
+        event->timer.time_out_ms = yf_time_2_ms(_out_val); \
         event->timer.time_start = yf_now_times.clock_time; \
-        event->timer.time_org_start = yf_now_times.clock_time; \
-        if (is_fd_evt) \
-                event->timer.time_org_start.tv_msec |= 1; \
-        else \
-                event->timer.time_org_start.tv_msec = ((event->timer.time_org_start.tv_msec|1) - 1); \
+        event->timer.is_fd_evt = _is_fd_evt; \
 } while (0)
 
-#define  yf_is_fd_evt(timer) ((timer)->time_org_start.tv_msec & 1)
+#define  yf_is_fd_evt(timer) ((timer)->is_fd_evt)
 
+//just these 2 pre val can set according to your need
+#define  YF_TIMER_PRCS_MS_BIT   1
+#define  YF_FAR_TIMER_ROLL_SIZE_BIT 10
 
+//1024
+#define  _YF_FAR_TIMER_ROLL_SIZE  (1<<YF_FAR_TIMER_ROLL_SIZE_BIT)
+// 2
+#define  _YF_TIMER_PRCS_MS  (1<<YF_TIMER_PRCS_MS_BIT)
+// 7
+#define  _YF_FAR_TIMER_PRCS_MS_BIT  (YF_TIMER_PRCS_MS_BIT + 6)
+
+// 128
+#define  _YF_FAR_TIMER_PRCS_MS   (1<<_YF_FAR_TIMER_PRCS_MS_BIT)
+// 256
+#define  _YF_NEAR_TIMER_MS_DIST (_YF_FAR_TIMER_PRCS_MS<<1)
+#define  _YF_FAR_TIMER_MS_DIST (_YF_FAR_TIMER_PRCS_MS<<YF_FAR_TIMER_ROLL_SIZE_BIT)
+
+/*
 #define  YF_TIMER_PRCS_MS_BIT   2
 #define  YF_FAR_TIMER_ROLL_SIZE_BIT 10
 
@@ -48,13 +61,16 @@ struct  yf_tm_evt_link_s
 // 4
 #define  _YF_TIMER_PRCS_MS  (1<<YF_TIMER_PRCS_MS_BIT)
 // 8
-#define  _YF_FAR_TIMER_PRCS_MS_BIT  (YF_TIMER_PRCS_MS_BIT + 7 - 1)
+#define  _YF_FAR_TIMER_PRCS_MS_BIT  (YF_TIMER_PRCS_MS_BIT)
 
 // 256
 #define  _YF_FAR_TIMER_PRCS_MS   (1<<_YF_FAR_TIMER_PRCS_MS_BIT)
 // 512
 #define  _YF_NEAR_TIMER_MS_DIST (_YF_FAR_TIMER_PRCS_MS<<1)
 #define  _YF_FAR_TIMER_MS_DIST (_YF_FAR_TIMER_PRCS_MS<<YF_FAR_TIMER_ROLL_SIZE_BIT)
+*/
+
+#define _YF_NEAREST_TIMER_ROLL_SIZE 128
 
 
 struct  yf_tm_evt_driver_in_s
@@ -79,7 +95,7 @@ struct  yf_tm_evt_driver_in_s
         yf_u32_t               far_tm_roll_index;
         yf_list_part_t        far_tm_lists[_YF_FAR_TIMER_ROLL_SIZE];
         
-        yf_list_part_t        near_tm_lists[128]  ____cacheline_aligned;
+        yf_list_part_t        near_tm_lists[_YF_NEAREST_TIMER_ROLL_SIZE]  ____cacheline_aligned;
         yf_bit_set_t          near_tm_flags[2];
         yf_u32_t               near_evts_num;
         yf_u32_t               near_tm_roll_index;
@@ -102,7 +118,7 @@ yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_driver
 #define  yf_destory_tm_driver(tm_driver) yf_free((tm_driver)->pevents)
 
 yf_int_t   yf_add_timer(yf_tm_evt_driver_in_t* tm_evt_driver
-                , yf_timer_t* timer, yf_log_t *log);
+                , yf_timer_t* timer, yf_log_t *log, yf_u32_t tm_ms);
 
 yf_int_t   yf_del_timer(yf_tm_evt_driver_in_t* tm_evt_driver
                 , yf_timer_t* timer, yf_log_t *log);

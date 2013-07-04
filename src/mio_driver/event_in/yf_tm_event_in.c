@@ -23,7 +23,7 @@ static void  yf_timeout_caller(yf_tm_evt_driver_in_t* tm_evt_driver);
                         i, _YF_FAR_TIMER_ROLL_SIZE)
 
 #define yf_near_timer_inc(tm_evt_driver, i) yf_cicur_add( \
-                        tm_evt_driver->near_tm_roll_index, i, 128)
+                        tm_evt_driver->near_tm_roll_index, i, _YF_NEAREST_TIMER_ROLL_SIZE)
 
 
 yf_int_t   yf_init_tm_driver(yf_tm_evt_driver_in_t* tm_evt_driver
@@ -98,7 +98,7 @@ static inline void yf_add_near_timer(yf_tm_evt_driver_in_t* tm_evt_driver
 }
 
 yf_int_t   yf_add_timer(yf_tm_evt_driver_in_t* tm_evt_driver
-                , yf_timer_t* timer, yf_log_t *log)
+                , yf_timer_t* timer, yf_log_t *log, yf_u32_t tm_ms)
 {
         if (yf_list_linked(&timer->linker))
         {
@@ -116,7 +116,7 @@ yf_int_t   yf_add_timer(yf_tm_evt_driver_in_t* tm_evt_driver
                                 timer);
         }
 
-        yf_s32_t  ms = yf_max(_YF_TIMER_PRCS_MS, yf_time_2_ms(&timer->time_out));
+        yf_s32_t  ms = yf_max(_YF_TIMER_PRCS_MS, tm_ms);
         ms = yf_align(ms, _YF_TIMER_PRCS_MS);
         
         yf_s32_t  diff_ms = 0, pass_mod_ms = 0;
@@ -177,12 +177,12 @@ yf_int_t   yf_del_timer(yf_tm_evt_driver_in_t* tm_evt_driver
         yf_list_del(&timer->linker);
 
         if (timer->head >= tm_evt_driver->near_tm_lists 
-                && timer->head < tm_evt_driver->near_tm_lists + 128)
+                && timer->head < tm_evt_driver->near_tm_lists + _YF_NEAREST_TIMER_ROLL_SIZE)
         {
                 if (yf_list_empty(timer->head))
                 {
-                        index = yf_mod(timer->head - tm_evt_driver->near_tm_lists + 128 
-                                - tm_evt_driver->near_tm_roll_index, 128);
+                        index = yf_mod(timer->head - tm_evt_driver->near_tm_lists + _YF_NEAREST_TIMER_ROLL_SIZE 
+                                - tm_evt_driver->near_tm_roll_index, _YF_NEAREST_TIMER_ROLL_SIZE);
 
                         yf_log_debug1(YF_LOG_DEBUG, log, 0, "near timer list_%d empty again", 
                                         index);
@@ -260,7 +260,7 @@ static void  yf_timeout_caller(yf_tm_evt_driver_in_t* tm_evt_driver)
                                         &tm_evt->timer
                                         );
                         
-                        tm_evt->evt.timeout_handler(&tm_evt->evt, &tm_evt->timer.time_org_start);
+                        tm_evt->evt.timeout_handler(&tm_evt->evt, &tm_evt->timer.time_start);
                 }        
         }
 }
@@ -287,7 +287,7 @@ static yf_int_t yf_check_near_timer_list(yf_tm_evt_driver_in_t* tm_evt_driver
                 , yf_u8_t list_offset, yf_int_t diff_periods, yf_u16_t bit_val)
 {
         yf_u8_t  index_begin = yf_mod(tm_evt_driver->near_tm_roll_index 
-                        + list_offset, 128);
+                        + list_offset, _YF_NEAREST_TIMER_ROLL_SIZE);
         yf_s8_t*  unempty_indexs = yf_bit_indexs[bit_val].indexs;
         yf_u8_t   index_it = 0;
         yf_list_part_t *list = NULL;
@@ -295,7 +295,7 @@ static yf_int_t yf_check_near_timer_list(yf_tm_evt_driver_in_t* tm_evt_driver
 
         for (i = 0; !yf_index_end(unempty_indexs, i) && unempty_indexs[i] < diff_periods; ++i)
         {
-                index_it = yf_mod(index_begin + unempty_indexs[i], 128);
+                index_it = yf_mod(index_begin + unempty_indexs[i], _YF_NEAREST_TIMER_ROLL_SIZE);
                 list = tm_evt_driver->near_tm_lists + index_it;
 
                 yf_log_debug2(YF_LOG_DEBUG, tm_evt_driver->log, 0, 
@@ -400,7 +400,7 @@ yf_int_t   yf_poll_timer(yf_tm_evt_driver_in_t* tm_evt_driver)
                         tm_evt_driver->near_tm_roll_index, 
                         diff_periods, tm_evt_driver->tm_period_cnt);
 
-        yf_int_t  tmp_diff_periods = yf_min(diff_periods, 128);
+        yf_int_t  tmp_diff_periods = yf_min(diff_periods, _YF_NEAREST_TIMER_ROLL_SIZE);
         yf_bit_set_t* bit_set = NULL;
 
         yf_int_t  flag_index = 0;
@@ -463,10 +463,10 @@ check_near_timer:
 
 update_near_flags:
                 bit_set = tm_evt_driver->near_tm_flags;
-                if (diff_periods < 128 && tm_evt_driver->near_evts_num)
+                if (diff_periods < _YF_NEAREST_TIMER_ROLL_SIZE && tm_evt_driver->near_evts_num)
                 {
                         tm_evt_driver->near_tm_roll_index = yf_mod(
-                                tm_evt_driver->near_tm_roll_index + diff_periods, 128);
+                                tm_evt_driver->near_tm_roll_index + diff_periods, _YF_NEAREST_TIMER_ROLL_SIZE);
 
                         yf_log_debug2(YF_LOG_DEBUG, tm_evt_driver->log, 0, 
                                         "now tm roll index=%d, near evts num=%d, ", 
@@ -485,7 +485,7 @@ update_near_flags:
                         }
                 }
                 else {
-                        if (diff_periods >= 128)
+                        if (diff_periods >= _YF_NEAREST_TIMER_ROLL_SIZE)
                                 assert(tm_evt_driver->near_evts_num == 0);
 
                         yf_log_debug0(YF_LOG_DEBUG, tm_evt_driver->log, 0, 
@@ -523,10 +523,7 @@ update_near_flags:
         yf_s64_t  passed_tv;
 
 #define  MV_FROM_FAR_TO_NEAR(_timer, _rest_ms) \
-                _timer->time_out.tv_msec = yf_align(_rest_ms, _YF_TIMER_PRCS_MS); \
-                _timer->time_out.tv_sec = 0; \
-                _timer->time_start = yf_now_times.clock_time; \
-                yf_add_near_timer(tm_evt_driver, _timer, _timer->time_out.tv_msec, \
+                yf_add_near_timer(tm_evt_driver, _timer, yf_align(_rest_ms, _YF_TIMER_PRCS_MS), \
                                 tm_evt_driver->log);
 
         //timeout far list
@@ -554,7 +551,7 @@ update_near_flags:
                 {
                         timer = yf_link_2_timer(pos);
                         
-                        time_ms = yf_time_2_ms(&timer->time_out);
+                        time_ms = timer->time_out_ms; 
                         passed_tv = yf_time_diff_ms(&yf_now_times.clock_time, 
                                         &timer->time_start);
 
@@ -595,7 +592,7 @@ update_near_flags:
         {
                 timer = yf_link_2_timer(pos);
                 
-                time_ms = yf_time_2_ms(&timer->time_out);
+                time_ms = timer->time_out_ms; 
                 passed_tv = yf_time_diff_ms(&yf_now_times.clock_time, 
                                 &timer->time_start);
                 
@@ -638,14 +635,14 @@ update_near_flags:
                         tm_evt_driver->too_far_tm_period_cnt);
 
         yf_u64_t  passed_ms, timeout_ms, rest_ms;
-        yf_int_t   big_lacy = 0;
+        yf_int_t  big_lacy = 0;
 
         yf_list_for_each_safe(pos, keep, &tm_evt_driver->too_far_tm_list)
         {
                 timer = yf_link_2_timer(pos);
                 
                 passed_ms = yf_time_diff_ms(&yf_now_times.clock_time, &timer->time_start);
-                timeout_ms = yf_time_2_ms(&timer->time_out);
+                timeout_ms = timer->time_out_ms; 
                 if (passed_ms >= timeout_ms)//big lacy
                 {
                         yf_log_error(YF_LOG_WARN, tm_evt_driver->log, 0, 
@@ -663,17 +660,13 @@ update_near_flags:
                                 "passed_tv=%d, time_ms=%d, addr=%p", 
                                 passed_ms, timeout_ms, 
                                 timer);
-                
-                timer->time_out.tv_msec = yf_align(rest_ms, _YF_TIMER_PRCS_MS);
-                timer->time_out.tv_sec = 0;
-                timer->time_start = yf_now_times.clock_time;
 
                 if (rest_ms < _YF_NEAR_TIMER_MS_DIST)
                 {
                         big_lacy = 1;
                 }
 
-                yf_add_timer(tm_evt_driver, timer, tm_evt_driver->log);
+                yf_add_timer(tm_evt_driver, timer, tm_evt_driver->log, rest_ms);
         }
 
         if (big_lacy)
@@ -746,10 +739,10 @@ yf_int_t   yf_register_tm_evt(yf_tm_evt_t* tm_evt
         
         yf_evt_driver_in_t* evt_driver = (yf_evt_driver_in_t*)driver;
         yf_tm_evt_link_t* tm_evt_link = container_of(tm_evt, yf_tm_evt_link_t, evt);
-        yf_set_timer_val(tm_evt_link, *time_out, 0);
+        yf_set_timer_val(tm_evt_link, time_out, 0);
         
         return  yf_add_timer(&evt_driver->tm_driver, 
-                        &tm_evt_link->timer, tm_evt->log);
+                        &tm_evt_link->timer, tm_evt->log, tm_evt_link->timer.time_out_ms);
 }
 
 
