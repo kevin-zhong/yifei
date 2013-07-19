@@ -70,7 +70,7 @@ typedef struct
         yf_str_t      log_time;
         yf_utime_t  last_clock_utime;
         yf_utime_t  last_real_wall_utime;
-        char           log_buf[YF_TIME_BUF_LEN];
+        char           log_buf[YF_TIME_BUF_LEN + 1];
 }
 yf_time_data_t;
 

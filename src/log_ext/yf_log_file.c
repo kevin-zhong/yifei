@@ -216,6 +216,9 @@ static void _log_file_msg(yf_log_t* yf_log, yf_log_msg_t* logmsg)
                         yf_lock(&log_ctx->write_lock);
                 }
                 else {
+                        if (wait_times) {
+                                fprintf(stderr, "%s [%s]:wait log buf wait_times=%d\n", yf_log_time.data, __FILE__, wait_times);
+                        }
                         log_ctx->write_waiting = 1;
                         break;
                 }

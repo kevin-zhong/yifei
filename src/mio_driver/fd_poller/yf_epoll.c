@@ -183,7 +183,7 @@ static yf_int_t yf_epoll_dispatch(yf_fd_poll_t *epoller)
                       evt_driver->tm_driver.nearest_timeout_ms);
 
         ready = epoll_wait(epoll_ctx->kpfd, epoll_ctx->event_list, epoll_ctx->nfds,
-                     (int)evt_driver->tm_driver.nearest_timeout_ms);
+                     (int)(evt_driver->tm_driver.nearest_timeout_ms >> 2));
 
         err = (ready == -1) ? yf_errno : 0;
 

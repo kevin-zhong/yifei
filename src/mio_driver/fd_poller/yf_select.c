@@ -212,7 +212,7 @@ static yf_int_t yf_select_dispatch(yf_fd_poll_t *poller)
                                "change max_fd: %d", select_ctx->max_fd);
         }
 
-        yf_ms_2_utime(evt_driver->tm_driver.nearest_timeout_ms, &tmv);
+        yf_ms_2_utime((evt_driver->tm_driver.nearest_timeout_ms >> 2), &tmv);
 
         yf_log_debug1(YF_LOG_DEBUG, poller->log, 0,
                        "select timer: %ud", evt_driver->tm_driver.nearest_timeout_ms);

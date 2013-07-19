@@ -3,10 +3,12 @@
 
 yf_times_t  yf_start_times;
 
+//log buf last char is '\0'
 #define yf_init_timedata(time_data) \
         if (time_data->log_time.data == NULL) { \
                 time_data->log_time.data = time_data->log_buf; \
-                time_data->log_time.len = sizeof(time_data->log_buf); \
+                time_data->log_time.len = YF_TIME_BUF_LEN; \
+                time_data->log_buf[YF_TIME_BUF_LEN] = 0; \
         }
 
 #if (YF_THREADS) && defined ___YF_THREAD_UNSUPPORT

@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
+#include <sched.h>
 
 extern "C" {
 #include <ppc/yf_header.h>
 #include <base_struct/yf_core.h>
 #include <mio_driver/yf_event.h>
+#include <log_ext/yf_log_file.h>
 }
 
 yf_pool_t *_mem_pool = NULL;
@@ -14,6 +16,7 @@ yf_s64_t tv_ms[4096];
 size_t tm_cnt = 0;
 yf_s64_t tags[4096];
 yf_tm_evt_t *tm_evts[4096];
+yf_int_t _sleep_test_timeout = 0;
 
 void on_poll(yf_evt_driver_t *evt_driver, void *, yf_log_t *log)
 {
@@ -58,7 +61,7 @@ void on_timeout(struct yf_tm_evt_s *evt, yf_time_t *start)
 
         *org_tms = 0;
 
-        if (tags[tm_cnt])
+        if (tags[tm_cnt] && _sleep_test_timeout)
         {
                 yf_log_debug2(YF_LOG_DEBUG, evt->log, 0, "cnt=%d, msleep=%d", tm_cnt, tags[tm_cnt]);
                 yf_msleep(tags[tm_cnt]);
@@ -193,7 +196,17 @@ public:
 
                 yf_cpuinfo();
 
-                _log = yf_log_open(YF_LOG_DEBUG, 8192, NULL);
+                yf_init_threads(36, 1024 * 1024, 1, NULL);
+
+                //test if proc delay by file log...
+                yf_log_file_init(NULL);
+                yf_log_file_init_ctx_t log_file_init = {1024*128, 1024*1024*64, 8, 
+                                NULL, "%t [%f:%l]-[%v]-[%r]"};
+
+                _log = yf_log_open(YF_LOG_DEBUG, 8192, (void*)&log_file_init);
+                assert(_log);
+
+                //_log = yf_log_open(YF_LOG_DEBUG, 8192, NULL);
                 _mem_pool = yf_create_pool(1024000, _log);
 
                 yf_init_time(_log);
@@ -274,7 +287,21 @@ TEST_F_INIT(DriverTestor, TmFd);
 
 int main(int argc, char **argv)
 {
-        yf_int_t ret = yf_save_argv(_log, argc, argv);
+        printf("max_pri is:%d,min_pri:%d\n ",sched_get_priority_max(2),sched_get_priority_min(2));
+        struct sched_param para;
+        
+        int maxpri = sched_get_priority_max(SCHED_RR);
+        para.sched_priority = maxpri;
+        int ret = 0;//sched_setscheduler(getpid(), SCHED_FIFO, &para);
+
+        //printf("ret=%d, Parent pid is %d policy is %d, prio: %d\n",ret,
+        //        getpid(),sched_getscheduler(getpid()),para.sched_priority);	
+	
+        const char* sleep_test_timeout = getenv("sleep_test_timeout");
+        if (sleep_test_timeout)
+                _sleep_test_timeout = atoi(sleep_test_timeout);
+
+        ret = yf_save_argv(_log, argc, argv);
         assert(ret == YF_OK);
 
         yf_init_bit_indexs();
